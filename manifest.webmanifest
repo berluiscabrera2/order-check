@@ -1,0 +1,26 @@
+{
+  "id": "/order-check/",
+  "name": "Order Check",
+  "short_name": "Order Check",
+  "description": "Comprueba códigos CGO y marca los productos revisados durante una visita.",
+  "lang": "es",
+  "start_url": "/order-check/",
+  "scope": "/order-check/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/order-check/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/order-check/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
