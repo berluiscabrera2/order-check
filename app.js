@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.4.0";
+  const APP_VERSION = "1.4.1";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -173,21 +173,25 @@
   }
 
   function filteredProducts() {
-    const searchQuery = elements.searchInput?.value ?? "";
-    if (searchQuery.length > 0) {
-      return visit.products.filter((product) => product.code.startsWith(searchQuery));
-    }
+    let products;
 
     if (activeFilter === "pending") {
-      return visit.products.filter((product) => !product.reviewed);
-    }
-    if (activeFilter === "reviewed") {
-      return visit.products
+      products = visit.products.filter((product) => !product.reviewed);
+    } else if (activeFilter === "reviewed") {
+      products = visit.products
         .filter((product) => product.reviewed)
         .slice()
         .sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0));
+    } else {
+      products = visit.products;
     }
-    return visit.products;
+
+    const searchQuery = elements.searchInput?.value ?? "";
+    if (searchQuery.length > 0) {
+      products = products.filter((product) => product.code.startsWith(searchQuery));
+    }
+
+    return products;
   }
 
   function createMetaItem(label, value) {

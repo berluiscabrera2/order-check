@@ -6,7 +6,7 @@ PWA móvil para comprobar rápidamente si un código de cuatro dígitos aparece 
 
 - Importación `CODE|INV|CGOQTY`, formato simple de V1 o una mezcla de ambos.
 - Parser que conserva ceros iniciales, completa datos faltantes con `-`, elimina duplicados y mantiene el orden.
-- Búsqueda automática al introducir cuatro dígitos.
+- Búsqueda incremental desde el primer dígito, respetando el filtro activo: Todos, Pendientes o Revisados.
 - Navegación táctil desde cada fila a una vista de detalle con botón para volver.
 - Checklist con filtros Todos, Pendientes y Revisados; Revisados muestra primero lo marcado más recientemente.
 - Pestaña Display con una lista separada de cualquier código de 4 dígitos + cantidad, sin modificar el CGO ni los checks.
@@ -37,4 +37,4 @@ Los pushes a `main` ejecutan las pruebas y publican el sitio con GitHub Actions 
 
 <https://berluiscabrera2.github.io/order-check/>
 
-Versión actual: **v1.3.1**
+Versión actual: **v1.4.1**

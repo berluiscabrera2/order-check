@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.4\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.4\.1/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.4\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.4\.0"/);
+  assert.match(read("index.html"), /v1\.4\.1/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.4\.1"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -83,6 +83,17 @@ test("la búsqueda filtra desde el primer dígito y abre detalles solo al tocar 
   assert.match(app, /elements\.searchResult\.hidden = true/);
   assert.match(app, /elements\.checklistSection\.hidden = false/);
   assert.match(app, /showProductDetail\(detailsButton\.dataset\.detailsCode\)/);
+});
+
+test("la búsqueda respeta Todos, Pendientes y Revisados", () => {
+  const app = read("app.js");
+  const filterPosition = app.indexOf('if (activeFilter === "pending")');
+  const searchPosition = app.indexOf('if (searchQuery.length > 0)');
+  assert.ok(filterPosition >= 0);
+  assert.ok(searchPosition > filterPosition);
+  assert.match(app, /products = visit\.products\.filter\(\(product\) => !product\.reviewed\)/);
+  assert.match(app, /products = visit\.products[\s\S]*?product\.reviewed/);
+  assert.match(app, /products = products\.filter\(\(product\) => product\.code\.startsWith\(searchQuery\)\)/);
 });
 
 test("la lista principal ya no muestra el título Lista CGO", () => {
