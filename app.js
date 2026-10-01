@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.7.2";
+  const APP_VERSION = "1.7.3";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -350,7 +350,7 @@
     }
     product.reviewed = shouldReview;
     if (shouldReview) {
-      product.reviewedAt = Date.now();
+      product.reviewedAt = core.nextReviewedAt(visit.products);
     } else {
       delete product.reviewedAt;
     }
@@ -606,7 +606,7 @@
     }
 
     const code = checkbox.dataset.code;
-    if (directToggledCheckbox?.code === code && Date.now() - directToggledCheckbox.at < 1200) {
+    if (directToggledCheckbox === checkbox) {
       directToggledCheckbox = null;
       return;
     }
@@ -639,7 +639,10 @@
       return;
     }
 
-    directToggledCheckbox = { code, at: Date.now() };
+    // Keep a reference to the exact DOM checkbox involved in this gesture.
+    // This suppresses only a synthetic follow-up event from the same tap,
+    // never a legitimate second tap on the newly rendered row.
+    directToggledCheckbox = checkbox;
     setReviewed(code, !product.reviewed);
     clearSearch({ refocus: true });
   }

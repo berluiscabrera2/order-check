@@ -2,7 +2,13 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseCodes, parseProducts, sanitizeCodeInput, normalizeStoredVisit } = require("../core.js");
+const {
+  parseCodes,
+  parseProducts,
+  sanitizeCodeInput,
+  normalizeStoredVisit,
+  nextReviewedAt,
+} = require("../core.js");
 
 test("parsea el formato completo y conserva todos los valores como strings", () => {
   assert.deepEqual(parseProducts("1479|20|1\n2423|36|1\n0500|8|1"), [
@@ -108,4 +114,74 @@ test("rechaza una visita inválida o vacía", () => {
   assert.equal(normalizeStoredVisit(null), null);
   assert.equal(normalizeStoredVisit({ products: [] }), null);
   assert.equal(normalizeStoredVisit({ codes: [], reviewed: [] }), null);
+});
+
+
+test("acepta filas Markdown y conserva correctamente CODE, INV y CGO QTY", () => {
+  assert.deepEqual(
+    parseProducts("| 0500 | 8 | 1 |\n| 0743 | - | 2 |\n| --- | --- | --- |"),
+    [
+      { code: "0500", inv: "8", cgoQty: "1", reviewed: false },
+      { code: "0743", inv: "-", cgoQty: "2", reviewed: false },
+    ],
+  );
+});
+
+test("acepta columnas separadas por tab sin desplazar los campos", () => {
+  assert.deepEqual(parseProducts("1479\t20\t1\n3322\t-\t2"), [
+    { code: "1479", inv: "20", cgoQty: "1", reviewed: false },
+    { code: "3322", inv: "-", cgoQty: "2", reviewed: false },
+  ]);
+});
+
+test("acepta CR, CRLF y separadores Unicode como saltos de línea", () => {
+  assert.deepEqual(parseProducts("1479|20|1\r2423|36|1\r\n0500|8|1\u20280743|-|2"), [
+    { code: "1479", inv: "20", cgoQty: "1", reviewed: false },
+    { code: "2423", inv: "36", cgoQty: "1", reviewed: false },
+    { code: "0500", inv: "8", cgoQty: "1", reviewed: false },
+    { code: "0743", inv: "-", cgoQty: "2", reviewed: false },
+  ]);
+});
+
+test("un duplicado completo rellena metadatos faltantes sin cambiar el orden", () => {
+  assert.deepEqual(parseProducts("0500\n2423|36|1\n0500|8|2"), [
+    { code: "0500", inv: "8", cgoQty: "2", reviewed: false },
+    { code: "2423", inv: "36", cgoQty: "1", reviewed: false },
+  ]);
+});
+
+test("un duplicado incompleto nunca borra metadatos ya válidos", () => {
+  assert.deepEqual(parseProducts("0500|8|2\n0500\n0500|-|-"), [
+    { code: "0500", inv: "8", cgoQty: "2", reviewed: false },
+  ]);
+});
+
+test("no convierte cuatro dígitos que forman parte de un número más largo", () => {
+  assert.deepEqual(parseCodes("UPC 1234567890500; código 0500"), ["0500"]);
+  assert.deepEqual(parseProducts("UPC 1234567890500"), []);
+});
+
+test("la migración de duplicados conserva metadata y el estado revisado más reciente", () => {
+  assert.deepEqual(
+    normalizeStoredVisit({
+      products: [
+        { code: "0500", inv: "-", cgoQty: "-", reviewed: false },
+        { code: "0500", inv: "8", cgoQty: "2", reviewed: true, reviewedAt: 100 },
+        { code: "0500", inv: "99", cgoQty: "9", reviewed: true, reviewedAt: 150 },
+      ],
+    }),
+    {
+      products: [{ code: "0500", inv: "8", cgoQty: "2", reviewed: true, reviewedAt: 150 }],
+    },
+  );
+});
+
+test("reviewedAt siempre aumenta aunque dos selecciones ocurran en el mismo milisegundo", () => {
+  const products = [
+    { code: "0500", reviewedAt: 1000 },
+    { code: "0743", reviewedAt: 1000 },
+  ];
+  assert.equal(nextReviewedAt(products, 1000), 1001);
+  assert.equal(nextReviewedAt(products, 999), 1001);
+  assert.equal(nextReviewedAt(products, 2000), 2000);
 });

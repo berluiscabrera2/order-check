@@ -27,31 +27,90 @@
     return normalized || "-";
   }
 
+  function mergeField(currentValue, incomingValue) {
+    const current = normalizeField(currentValue);
+    const incoming = normalizeField(incomingValue);
+    return current === "-" && incoming !== "-" ? incoming : current;
+  }
+
+  function mergeProduct(existing, incoming) {
+    existing.inv = mergeField(existing.inv, incoming.inv);
+    existing.cgoQty = mergeField(existing.cgoQty, incoming.cgoQty);
+
+    if (incoming.reviewed === true) {
+      existing.reviewed = true;
+    }
+
+    const incomingReviewedAt = Number(incoming.reviewedAt);
+    const existingReviewedAt = Number(existing.reviewedAt);
+    if (
+      incoming.reviewed === true &&
+      Number.isFinite(incomingReviewedAt) &&
+      incomingReviewedAt > 0 &&
+      (!Number.isFinite(existingReviewedAt) || incomingReviewedAt > existingReviewedAt)
+    ) {
+      existing.reviewedAt = incomingReviewedAt;
+    }
+
+    return existing;
+  }
+
+  function parseTableFields(line) {
+    let candidate = line.trim();
+
+    if (candidate.includes("|")) {
+      // Accept both plain pipe rows and Markdown table rows:
+      // 1479|20|1
+      // | 1479 | 20 | 1 |
+      if (candidate.startsWith("|")) {
+        candidate = candidate.slice(1);
+      }
+      if (candidate.endsWith("|")) {
+        candidate = candidate.slice(0, -1);
+      }
+      return candidate.split("|").map((field) => field.trim());
+    }
+
+    if (candidate.includes("\t")) {
+      return candidate.split("\t").map((field) => field.trim());
+    }
+
+    return null;
+  }
+
   function parseProducts(input) {
     const products = [];
-    const seen = new Set();
+    const byCode = new Map();
 
     function addProduct(code, inv = "-", cgoQty = "-") {
-      if (seen.has(code)) {
-        return;
-      }
-      seen.add(code);
-      products.push({
+      const incoming = {
         code,
         inv: normalizeField(inv),
         cgoQty: normalizeField(cgoQty),
         reviewed: false,
-      });
+      };
+
+      const existing = byCode.get(code);
+      if (existing) {
+        // Keep first-row ordering, but never lose metadata just because a
+        // simpler duplicate appeared before the complete row.
+        mergeProduct(existing, incoming);
+        return;
+      }
+
+      byCode.set(code, incoming);
+      products.push(incoming);
     }
 
-    for (const rawLine of String(input ?? "").split(/\r?\n/)) {
+    for (const rawLine of String(input ?? "").split(/\r\n?|\n|\u2028|\u2029/)) {
       const line = rawLine.trim();
       if (!line) {
         continue;
       }
 
-      if (line.includes("|")) {
-        const [rawCode, rawInv, rawCgoQty] = line.split("|");
+      const tableFields = parseTableFields(line);
+      if (tableFields) {
+        const [rawCode = "", rawInv = "-", rawCgoQty = "-"] = tableFields;
         const code = rawCode.trim();
         if (EXACT_CODE_PATTERN.test(code)) {
           addProduct(code, rawInv, rawCgoQty);
@@ -60,7 +119,8 @@
       }
 
       // Preserve the flexible V1 import for lines containing codes separated
-      // by commas, spaces, or surrounding text.
+      // by commas, spaces, or surrounding text. Four digits embedded inside
+      // a longer number are intentionally ignored by parseCodes().
       for (const code of parseCodes(line)) {
         addProduct(code);
       }
@@ -124,19 +184,43 @@
     }
 
     const products = [];
-    const seen = new Set();
+    const byCode = new Map();
     for (const item of sourceProducts) {
       const candidate =
         typeof item === "string"
           ? normalizeProduct({ code: item, inv: "-", cgoQty: "-" }, legacyReviewed)
           : normalizeProduct(item, legacyReviewed);
-      if (candidate && !seen.has(candidate.code)) {
-        seen.add(candidate.code);
-        products.push(candidate);
+
+      if (!candidate) {
+        continue;
       }
+
+      const existing = byCode.get(candidate.code);
+      if (existing) {
+        mergeProduct(existing, candidate);
+        continue;
+      }
+
+      byCode.set(candidate.code, candidate);
+      products.push(candidate);
     }
 
     return products.length > 0 ? { products } : null;
+  }
+
+  function nextReviewedAt(products, now = Date.now()) {
+    let latest = 0;
+
+    for (const product of Array.isArray(products) ? products : []) {
+      const reviewedAt = Number(product?.reviewedAt);
+      if (Number.isFinite(reviewedAt) && reviewedAt > latest) {
+        latest = reviewedAt;
+      }
+    }
+
+    const current = Number(now);
+    const safeNow = Number.isFinite(current) && current > 0 ? current : 0;
+    return Math.max(safeNow, latest + 1);
   }
 
   const api = Object.freeze({
@@ -144,6 +228,7 @@
     parseProducts,
     sanitizeCodeInput,
     normalizeStoredVisit,
+    nextReviewedAt,
   });
 
   globalScope.OrderCheckCore = api;

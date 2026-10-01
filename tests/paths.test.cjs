@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.7\.2/);
+  assert.match(serviceWorker, /order-check-shell-v1\.7\.3/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.7\.2/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.7\.2"/);
+  assert.match(read("index.html"), /v1\.7\.3/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.7\.3"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -61,6 +61,7 @@ test("Todos y Pendientes se ordenan por código; Revisados conserva los más rec
   const app = read("app.js");
   assert.match(app, /Number\(a\.code\) - Number\(b\.code\)/);
   assert.match(app, /activeFilter === "reviewed"[\s\S]*?b\.reviewedAt \?\? 0/);
+  assert.match(app, /core\.nextReviewedAt\(visit\.products\)/);
   assert.match(app, /const items = \[\.\.\.displayItems\]\.sort/);
 });
 
@@ -178,6 +179,9 @@ test("marcar un checkbox limpia la búsqueda y en iOS mantiene el teclado abiert
   assert.match(app, /setReviewed\(code, !product\.reviewed\)/);
   assert.match(app, /clearSearch\(\{ refocus: true \}\)/);
   assert.match(app, /const hadSearch = elements\.searchInput\.value\.length > 0;[\s\S]*?setReviewed\(code, checkbox\.checked\);[\s\S]*?clearSearch\(\);/);
+  assert.match(app, /directToggledCheckbox === checkbox/);
+  assert.match(app, /directToggledCheckbox = checkbox/);
+  assert.doesNotMatch(app, /directToggledCheckbox\?\.code/);
 });
 
 test("en iOS el resultado se abre al inicio del toque para evitar que el buscador pierda foco", () => {
