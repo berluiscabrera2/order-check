@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.3\.1/);
+  assert.match(serviceWorker, /order-check-shell-v1\.4\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.3\.1/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.3\.0"/);
+  assert.match(read("index.html"), /v1\.4\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.4\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -75,6 +75,19 @@ test("Display usa almacenamiento separado y no modifica la lista CGO", () => {
 test("Display permite cualquier código válido de 4 dígitos aunque no esté en CGO", () => {
   const app = read("app.js");
   assert.doesNotMatch(app, /Ese código no está en la lista CGO actual/);
+});
+
+test("la búsqueda filtra desde el primer dígito y abre detalles solo al tocar una fila", () => {
+  const app = read("app.js");
+  assert.match(app, /product\.code\.startsWith\(searchQuery\)/);
+  assert.match(app, /elements\.searchResult\.hidden = true/);
+  assert.match(app, /elements\.checklistSection\.hidden = false/);
+  assert.match(app, /showProductDetail\(detailsButton\.dataset\.detailsCode\)/);
+});
+
+test("la lista principal ya no muestra el título Lista CGO", () => {
+  const html = read("index.html");
+  assert.doesNotMatch(html, /<h2 id="checklist-title">Lista CGO<\/h2>/);
 });
 
 test("la lista de prueba no está precargada en producción", () => {
