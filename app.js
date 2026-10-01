@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "1.1.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const core = window.OrderCheckCore;
 
@@ -17,6 +17,9 @@
     searchResult: document.querySelector("#search-result"),
     resultTitle: document.querySelector("#result-title"),
     resultMessage: document.querySelector("#result-message"),
+    resultDetails: document.querySelector("#result-details"),
+    resultInv: document.querySelector("#result-inv"),
+    resultCgoQty: document.querySelector("#result-cgo-qty"),
     resultReviewedNote: document.querySelector("#result-reviewed-note"),
     resultAction: document.querySelector("#result-action"),
     checklistSection: document.querySelector("#checklist-section"),
@@ -33,7 +36,12 @@
   function loadVisit() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      return core.normalizeStoredVisit(saved);
+      const normalized = core.normalizeStoredVisit(saved);
+      if (normalized) {
+        // Writing the normalized shape migrates V1 visits while preserving checks.
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      }
+      return normalized;
     } catch {
       return null;
     }
@@ -43,12 +51,12 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(visit));
   }
 
-  function reviewedSet() {
-    return new Set(visit?.reviewed ?? []);
+  function findProduct(code) {
+    return visit?.products.find((product) => product.code === code) ?? null;
   }
 
   function setView() {
-    const hasVisit = Boolean(visit?.codes.length);
+    const hasVisit = Boolean(visit?.products.length);
     elements.setupView.hidden = hasVisit;
     elements.visitView.hidden = !hasVisit;
 
@@ -68,8 +76,8 @@
   }
 
   function renderProgress() {
-    const reviewed = visit.reviewed.length;
-    const total = visit.codes.length;
+    const reviewed = visit.products.filter((product) => product.reviewed).length;
+    const total = visit.products.length;
     elements.progressText.textContent = `${reviewed} de ${total} revisados`;
     elements.loadedCount.textContent = `${total} ${total === 1 ? "código cargado" : "códigos cargados"}`;
   }
@@ -82,26 +90,33 @@
     }
   }
 
-  function filteredCodes() {
-    const reviewed = reviewedSet();
+  function filteredProducts() {
     if (activeFilter === "pending") {
-      return visit.codes.filter((code) => !reviewed.has(code));
+      return visit.products.filter((product) => !product.reviewed);
     }
     if (activeFilter === "reviewed") {
-      return visit.codes.filter((code) => reviewed.has(code));
+      return visit.products.filter((product) => product.reviewed);
     }
-    return visit.codes;
+    return visit.products;
+  }
+
+  function createMetaItem(label, value) {
+    const item = document.createElement("span");
+    const name = document.createElement("span");
+    const data = document.createElement("strong");
+    name.textContent = label;
+    data.textContent = value;
+    item.append(name, data);
+    return item;
   }
 
   function renderChecklist() {
-    const reviewed = reviewedSet();
-    const codes = filteredCodes();
+    const products = filteredProducts();
     const fragment = document.createDocumentFragment();
 
-    for (const code of codes) {
-      const isReviewed = reviewed.has(code);
+    for (const product of products) {
       const item = document.createElement("li");
-      item.className = `code-row${isReviewed ? " is-reviewed" : ""}`;
+      item.className = `code-row${product.reviewed ? " is-reviewed" : ""}`;
 
       const label = document.createElement("label");
       label.className = "code-label";
@@ -109,25 +124,37 @@
       const checkbox = document.createElement("input");
       checkbox.className = "code-checkbox";
       checkbox.type = "checkbox";
-      checkbox.checked = isReviewed;
-      checkbox.dataset.code = code;
-      checkbox.setAttribute("aria-label", `${isReviewed ? "Desmarcar" : "Marcar"} código ${code}`);
+      checkbox.checked = product.reviewed;
+      checkbox.dataset.code = product.code;
+      checkbox.setAttribute("aria-label", `${product.reviewed ? "Desmarcar" : "Marcar"} código ${product.code}`);
+
+      const content = document.createElement("span");
+      content.className = "code-content";
+
+      const top = document.createElement("span");
+      top.className = "code-top";
 
       const value = document.createElement("span");
       value.className = "code-value";
-      value.textContent = code;
+      value.textContent = product.code;
 
       const state = document.createElement("span");
       state.className = "code-state";
-      state.textContent = isReviewed ? "Revisado" : "Pendiente";
+      state.textContent = product.reviewed ? "Revisado" : "Pendiente";
 
-      label.append(checkbox, value, state);
+      const meta = document.createElement("span");
+      meta.className = "code-meta";
+      meta.append(createMetaItem("INV", product.inv), createMetaItem("QTY", product.cgoQty));
+
+      top.append(value, state);
+      content.append(top, meta);
+      label.append(checkbox, content);
       item.append(label);
       fragment.append(item);
     }
 
     elements.codeList.replaceChildren(fragment);
-    elements.emptyFilterMessage.hidden = codes.length > 0;
+    elements.emptyFilterMessage.hidden = products.length > 0;
   }
 
   function renderSearchResult() {
@@ -138,39 +165,41 @@
 
     if (!complete) {
       elements.searchResult.className = "search-result";
+      elements.resultDetails.hidden = true;
       return;
     }
 
-    const exists = visit.codes.includes(code);
-    if (!exists) {
+    const product = findProduct(code);
+    if (!product) {
       elements.searchResult.className = "search-result is-no";
       elements.resultTitle.textContent = "✕ CGO NO";
       elements.resultMessage.textContent = "Revisar para agregar al pedido.";
+      elements.resultDetails.hidden = true;
       elements.resultReviewedNote.hidden = true;
       elements.resultAction.hidden = true;
       return;
     }
 
-    const isReviewed = reviewedSet().has(code);
     elements.searchResult.className = "search-result is-yes";
     elements.resultTitle.textContent = "✓ CGO SÍ";
     elements.resultMessage.textContent = "Ya está siendo pedido.";
-    elements.resultReviewedNote.hidden = !isReviewed;
+    elements.resultDetails.hidden = false;
+    elements.resultInv.textContent = product.inv;
+    elements.resultCgoQty.textContent = product.cgoQty;
+    elements.resultReviewedNote.hidden = !product.reviewed;
     elements.resultReviewedNote.textContent = "Este código ya estaba marcado como revisado.";
     elements.resultAction.hidden = false;
-    elements.resultAction.classList.toggle("is-unmark", isReviewed);
-    elements.resultAction.textContent = isReviewed ? "↶ Desmarcar" : "✓ Marcar como revisado";
+    elements.resultAction.classList.toggle("is-unmark", product.reviewed);
+    elements.resultAction.textContent = product.reviewed ? "↶ Desmarcar" : "✓ Marcar como revisado";
     elements.resultAction.dataset.code = code;
   }
 
   function setReviewed(code, shouldReview) {
-    const reviewed = reviewedSet();
-    if (shouldReview) {
-      reviewed.add(code);
-    } else {
-      reviewed.delete(code);
+    const product = findProduct(code);
+    if (!product) {
+      return;
     }
-    visit.reviewed = visit.codes.filter((item) => reviewed.has(item));
+    product.reviewed = shouldReview;
     saveVisit();
     renderProgress();
     renderChecklist();
@@ -184,14 +213,14 @@
 
   elements.setupForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const codes = core.parseCodes(elements.codesInput.value);
-    if (codes.length === 0) {
-      elements.setupMessage.textContent = "No encontré códigos válidos de exactamente 4 dígitos.";
+    const products = core.parseProducts(elements.codesInput.value);
+    if (products.length === 0) {
+      elements.setupMessage.textContent = "No encontré productos con un código válido de 4 dígitos.";
       elements.codesInput.focus();
       return;
     }
 
-    visit = { codes, reviewed: [] };
+    visit = { products };
     activeFilter = "all";
     saveVisit();
     elements.searchInput.value = "";
@@ -209,11 +238,11 @@
 
   elements.resultAction.addEventListener("click", () => {
     const code = elements.resultAction.dataset.code;
-    if (!code || !visit.codes.includes(code)) {
+    const product = code ? findProduct(code) : null;
+    if (!product) {
       return;
     }
-    const isReviewed = reviewedSet().has(code);
-    setReviewed(code, !isReviewed);
+    setReviewed(code, !product.reviewed);
     clearSearchAndRefocus();
   });
 

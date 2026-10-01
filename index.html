@@ -25,7 +25,7 @@
           <div class="brand-mark" aria-hidden="true">✓</div>
           <div>
             <h1 id="setup-title">Order Check</h1>
-            <p>Pega los códigos de 4 dígitos de tu lista CGO.</p>
+            <p>Pega los datos extraídos de tu lista CGO.</p>
           </div>
         </header>
 
@@ -38,11 +38,12 @@
             spellcheck="false"
             autocapitalize="off"
             autocomplete="off"
-            placeholder="1479&#10;2423&#10;2469&#10;2476&#10;0500&#10;0743"
+            placeholder="1479|20|1&#10;2423|36|1&#10;2469&#10;0500"
             aria-describedby="codes-help setup-message"
           ></textarea>
           <p id="codes-help" class="field-help">
-            Acepta saltos de línea, comas, espacios y texto adicional.
+            <span class="format-hint">Código | INV | CGO QTY</span>
+            También acepta solo un código por línea. Los datos que falten aparecerán como “-”.
           </p>
           <p id="setup-message" class="form-message" role="status" aria-live="polite"></p>
           <button class="button button--primary button--full" type="submit">Cargar CGO</button>
@@ -80,6 +81,16 @@
           <div id="search-result" class="search-result" role="status" aria-live="polite" hidden>
             <p id="result-title" class="result-title"></p>
             <p id="result-message" class="result-message"></p>
+            <div id="result-details" class="result-details" hidden>
+              <div class="result-detail">
+                <span>INV</span>
+                <strong id="result-inv">-</strong>
+              </div>
+              <div class="result-detail">
+                <span>CGO QTY</span>
+                <strong id="result-cgo-qty">-</strong>
+              </div>
+            </div>
             <p id="result-reviewed-note" class="result-reviewed-note" hidden></p>
             <button id="result-action" class="button button--result" type="button" hidden></button>
           </div>
@@ -108,7 +119,7 @@
     </main>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.0.0</span>
+      <span id="app-version">v1.1.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>

@@ -29,7 +29,21 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.0\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.1\.0/);
+});
+
+test("la interfaz y el código publican la misma versión", () => {
+  assert.match(read("index.html"), /v1\.1\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.1\.0"/);
+});
+
+test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por código", () => {
+  const html = read("index.html");
+  const app = read("app.js");
+  assert.match(html, /id="result-inv"/);
+  assert.match(html, /id="result-cgo-qty"/);
+  assert.match(app, /findProduct\(code\)/);
+  assert.match(app, /product\.code === code/);
 });
 
 test("la lista de prueba no está precargada en producción", () => {
