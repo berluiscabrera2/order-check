@@ -29,12 +29,13 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.8\.1/);
+  assert.match(serviceWorker, /order-check-shell-/);
+  assert.match(serviceWorker, /v1\.9\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.8\.1/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.8\.1"/);
+  assert.match(read("index.html"), /v1\.9\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.9\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -57,10 +58,9 @@ test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por c
   assert.match(app, /keyForProduct\(product\) === key/);
 });
 
-test("Todos y Pendientes se ordenan por código; Revisados conserva los más recientes arriba", () => {
+test("la lista usa el selector puro de orden y Revisados conserva los más recientes arriba", () => {
   const app = read("app.js");
-  assert.match(app, /Number\(a\.code\) - Number\(b\.code\)/);
-  assert.match(app, /activeFilter === "reviewed"[\s\S]*?b\.reviewedAt \?\? 0/);
+  assert.match(app, /core\.selectProducts\(productsForActiveDay\(\)/);
   assert.match(app, /core\.nextReviewedAt\(visit\.products\)/);
   assert.match(app, /const items = \[\.\.\.displayItems\]\.sort/);
 });
@@ -82,11 +82,12 @@ test("Display permite cualquier código válido de 4 dígitos aunque no esté en
   assert.doesNotMatch(app, /Ese código no está en la lista CGO actual/);
 });
 
-test("la búsqueda filtra desde el primer dígito y abre detalles solo al tocar una fila", () => {
+test("la búsqueda filtra desde el primer dígito y muestra CGO SÍ o NO con cuatro dígitos", () => {
   const app = read("app.js");
-  assert.match(app, /product\.code\.startsWith\(searchQuery\)/);
-  assert.match(app, /elements\.searchResult\.hidden = true/);
-  assert.match(app, /elements\.checklistSection\.hidden = false/);
+  assert.match(read("core.js"), /product\?\.code\?\.startsWith\(searchQuery\)/);
+  assert.match(app, /query\.length !== 4/);
+  assert.match(app, /🔴 CGO NO/);
+  assert.match(app, /🟢 CGO SÍ/);
   assert.match(app, /showProductDetail\(key\)/);
 });
 
@@ -110,15 +111,13 @@ test("el encabezado tiene Display a la izquierda y + para nueva visita", () => {
   assert.match(html, />\s*\+\s*<\/button>/);
 });
 
-test("la búsqueda respeta Todos, Pendientes y Revisados", () => {
-  const app = read("app.js");
-  const filterPosition = app.indexOf('if (activeFilter === "pending")');
-  const searchPosition = app.indexOf('if (searchQuery.length > 0)');
-  assert.ok(filterPosition >= 0);
-  assert.ok(searchPosition > filterPosition);
-  assert.match(app, /products = products\.filter\(\(product\) => !product\.reviewed\)/);
-  assert.match(app, /products = products[\s\S]*?product\.reviewed/);
-  assert.match(app, /products = products\.filter\(\(product\) => product\.code\.startsWith\(searchQuery\)\)/);
+test("la búsqueda usa toda la lista del día y no queda limitada por el filtro activo", () => {
+  const core = read("core.js");
+  const searchPosition = core.indexOf("if (searchQuery)");
+  const pendingPosition = core.indexOf('else if (filter === "pending")');
+  assert.ok(searchPosition >= 0);
+  assert.ok(pendingPosition > searchPosition);
+  assert.match(core, /if \(searchQuery\)[\s\S]*?else if \(filter === "pending"\)/);
 });
 
 test("la lista principal ya no muestra títulos innecesarios alrededor del buscador", () => {
@@ -144,7 +143,7 @@ test("Enter procesa resultados de arriba hacia abajo sin doble avance", () => {
   assert.match(app, /core\.createSelectionSequence\(filteredProducts\(\)\)/);
   assert.match(app, /function submitNextSearchResult\(\)/);
   assert.match(app, /core\.takeNextSelectionKey\(sequence\.queue\)/);
-  assert.match(app, /setReviewed\(key, !product\.reviewed\)/);
+  assert.match(app, /setReviewed\(key, true\)/);
   assert.match(app, /core\.selectionSequenceComplete\(sequence\.queue\)/);
   assert.match(app, /clearSearch\(\{ refocus: true \}\)/);
   assert.match(app, /event\.type !== "touchstart"[\s\S]*?directSubmittedSearchAt < 1200/);
@@ -234,6 +233,17 @@ test("el filtro de día es un icono compacto junto a Display y abre un menú", (
   assert.match(app, /function productsForActiveDay\(\)/);
   assert.match(app, /const dayProducts = productsForActiveDay\(\)/);
   assert.match(css, /\.day-filter-menu \{[\s\S]*?position: absolute/);
+});
+
+test("el encabezado incluye selector de orden original, ascendente y descendente", () => {
+  const html = read("index.html");
+  const app = read("app.js");
+  assert.match(html, /id="sort-button"/);
+  assert.match(html, /id="sort-menu"/);
+  assert.match(app, /\["original", "Original"\]/);
+  assert.match(app, /\["ascending", "Ascendente"\]/);
+  assert.match(app, /\["descending", "Descendente"\]/);
+  assert.match(app, /activeSortMode = button\.dataset\.sortMode/);
 });
 
 test("la lista no muestra las palabras Revisado/Pendiente en cada fila y muestra DAY", () => {

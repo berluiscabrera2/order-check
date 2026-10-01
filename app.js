@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.8.1";
+  const APP_VERSION = "1.9.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const TITLE_STORAGE_KEY = "order-check.title-emojis.v1";
@@ -19,6 +19,8 @@
     displayButton: document.querySelector("#display-button"),
     dayFilterButton: document.querySelector("#day-filter-button"),
     dayFilterMenu: document.querySelector("#day-filter-menu"),
+    sortButton: document.querySelector("#sort-button"),
+    sortMenu: document.querySelector("#sort-menu"),
     searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
     clearSearchButton: document.querySelector("#clear-search-button"),
@@ -61,6 +63,7 @@
   let displayItems = visit ? loadDisplayItems() : [];
   let activeFilter = "all";
   let activeDay = "ALL";
+  let activeSortMode = "original";
   let selectedProductKey = productKeyFromHash();
   let preserveSearchKeyboardOnNextDetail = false;
   let directOpenedRow = null;
@@ -195,7 +198,8 @@
       button.type = "button";
       button.className = `day-menu-option${day === activeDay ? " is-active" : ""}`;
       button.dataset.day = day;
-      button.setAttribute("aria-pressed", String(day === activeDay));
+      button.setAttribute("role", "menuitemradio");
+      button.setAttribute("aria-checked", String(day === activeDay));
       button.textContent = day;
       fragment.append(button);
     }
@@ -209,6 +213,44 @@
       activeDay === "ALL" ? "Filtrar por día" : `Día: ${activeDay}`;
   }
 
+  function renderSortMenu() {
+    const options = [
+      ["original", "Original"],
+      ["ascending", "Ascendente"],
+      ["descending", "Descendente"],
+    ];
+    const fragment = document.createDocumentFragment();
+
+    for (const [mode, label] of options) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `sort-menu-option${mode === activeSortMode ? " is-active" : ""}`;
+      button.dataset.sortMode = mode;
+      button.setAttribute("role", "menuitemradio");
+      button.setAttribute("aria-checked", String(mode === activeSortMode));
+      button.textContent = label;
+      fragment.append(button);
+    }
+
+    elements.sortMenu.replaceChildren(fragment);
+    const reviewedWithoutSearch =
+      activeFilter === "reviewed" && elements.searchInput.value.length === 0;
+    elements.sortButton.hidden = reviewedWithoutSearch;
+    if (reviewedWithoutSearch) {
+      elements.sortMenu.hidden = true;
+      elements.sortButton.setAttribute("aria-expanded", "false");
+    }
+    const labels = {
+      original: "Orden original",
+      ascending: "Orden ascendente",
+      descending: "Orden descendente",
+    };
+    const icons = { original: "⇅", ascending: "↑", descending: "↓" };
+    elements.sortButton.textContent = icons[activeSortMode];
+    elements.sortButton.setAttribute("aria-label", labels[activeSortMode]);
+    elements.sortButton.title = labels[activeSortMode];
+  }
+
   function setView() {
     const hasVisit = Boolean(visit?.products.length);
     elements.setupView.hidden = hasVisit;
@@ -216,8 +258,6 @@
 
     if (hasVisit) {
       renderEmojiTitle();
-      renderDayMenu();
-      renderFilters();
       renderVisit();
     } else {
       elements.codesInput.value = "";
@@ -226,12 +266,6 @@
   }
 
   function renderVisit() {
-    renderDayMenu();
-    renderFilters();
-    renderChecklist();
-    renderDisplayList();
-    renderSearchResult();
-
     if (selectedProductKey && findProduct(selectedProductKey)) {
       showProductDetail(selectedProductKey, false);
     } else {
@@ -263,24 +297,12 @@
   }
 
   function filteredProducts() {
-    let products = productsForActiveDay();
-
-    if (activeFilter === "pending") {
-      products = products.filter((product) => !product.reviewed);
-    } else if (activeFilter === "reviewed") {
-      products = products.filter((product) => product.reviewed);
-    }
-
     const searchQuery = elements.searchInput?.value ?? "";
-    if (searchQuery.length > 0) {
-      products = products.filter((product) => product.code.startsWith(searchQuery));
-    }
-
-    if (activeFilter === "reviewed") {
-      return products.sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0));
-    }
-
-    return products.sort((a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code));
+    return core.selectProducts(productsForActiveDay(), {
+      filter: activeFilter,
+      searchQuery,
+      sortMode: activeSortMode,
+    });
   }
 
   function createMetaItem(label, value) {
@@ -424,21 +446,66 @@
   }
 
   function renderSearchResult() {
-    // Search filters the normal product rows from the first digit onward.
     // While a searched product detail is open, keep the list hidden so the
     // focused search field can remain on screen without mixing both views.
-    elements.searchResult.hidden = true;
     if (selectedProductKey) {
+      elements.searchResult.hidden = true;
       elements.checklistSection.hidden = true;
       return;
     }
+
     elements.checklistSection.hidden = false;
     renderChecklist();
+
+    const query = elements.searchInput.value;
+    if (query.length !== 4) {
+      elements.searchResult.hidden = true;
+      return;
+    }
+
+    const exactMatches = productsForActiveDay().filter((product) => product.code === query);
+    elements.searchResult.hidden = false;
+    elements.resultAction.hidden = true;
+    elements.resultAction.removeAttribute("data-product-key");
+    elements.resultReviewedNote.hidden = true;
+    elements.resultDetails.hidden = true;
+
+    if (exactMatches.length === 0) {
+      elements.searchResult.className = "search-result is-no";
+      elements.resultTitle.textContent = "🔴 CGO NO";
+      elements.resultMessage.textContent = "Revisar para agregar al pedido.";
+      return;
+    }
+
+    elements.searchResult.className = "search-result is-yes";
+    elements.resultTitle.textContent = "🟢 CGO SÍ";
+
+    if (exactMatches.length > 1) {
+      elements.resultMessage.textContent = `Encontrado en ${exactMatches.length} días. Selecciona la fila correspondiente.`;
+      return;
+    }
+
+    const product = exactMatches[0];
+    elements.resultMessage.textContent = "Ya está siendo pedido.";
+    elements.resultInv.textContent = product.inv;
+    elements.resultCgoQty.textContent = product.cgoQty;
+    elements.resultDetails.hidden = false;
+    elements.resultReviewedNote.hidden = !product.reviewed;
+    elements.resultReviewedNote.textContent = "Este producto ya está revisado.";
+    elements.resultAction.hidden = false;
+    elements.resultAction.dataset.productKey = keyForProduct(product);
+    elements.resultAction.classList.toggle("is-unmark", product.reviewed);
+    elements.resultAction.textContent = product.reviewed
+      ? "↶ Desmarcar"
+      : "✓ Marcar como revisado";
   }
 
   function setReviewed(key, shouldReview) {
     const product = findProduct(key);
     if (!product) {
+      return;
+    }
+    if (product.reviewed === shouldReview) {
       return;
     }
     product.reviewed = shouldReview;
@@ -514,6 +581,7 @@
     elements.searchCard.hidden = false;
     elements.checklistSection.hidden = false;
     renderDayMenu();
+    renderSortMenu();
     renderFilters();
     renderSearchResult();
 
@@ -623,7 +691,7 @@
 
     const product = findProduct(key);
     if (product) {
-      setReviewed(key, !product.reviewed);
+      setReviewed(key, true);
     }
 
     if (core.selectionSequenceComplete(sequence.queue)) {
@@ -642,6 +710,7 @@
     resetSearchEnterSequence();
     syncClearSearchButton();
     renderSearchResult();
+    renderSortMenu();
     if (refocus) {
       elements.searchInput.focus({ preventScroll: true });
     }
@@ -671,6 +740,7 @@
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
     activeFilter = "all";
     activeDay = "ALL";
+    activeSortMode = "original";
     resetSearchEnterSequence();
     saveVisit();
     elements.searchInput.value = "";
@@ -686,6 +756,7 @@
     resetSearchEnterSequence();
     syncClearSearchButton();
     renderSearchResult();
+    renderSortMenu();
     syncSearchEnterButton();
   });
 
@@ -755,10 +826,10 @@
   }
 
   elements.resultAction.addEventListener("click", () => {
-    const code = elements.resultAction.dataset.code;
-    const product = code ? filteredProducts().find((item) => item.code === code) : null;
+    const key = elements.resultAction.dataset.productKey;
+    const product = findProduct(key);
     if (!product) return;
-    setReviewed(keyForProduct(product), !product.reviewed);
+    setReviewed(key, !product.reviewed);
     clearSearchAndRefocus();
   });
 
@@ -883,6 +954,7 @@
       resetSearchEnterSequence();
       activeFilter = button.dataset.filter;
       renderFilters();
+      renderSortMenu();
       renderChecklist();
       syncSearchEnterButton();
     });
@@ -891,6 +963,8 @@
   elements.dayFilterButton.addEventListener("click", (event) => {
     event.stopPropagation();
     const willOpen = elements.dayFilterMenu.hidden;
+    elements.sortMenu.hidden = true;
+    elements.sortButton.setAttribute("aria-expanded", "false");
     elements.dayFilterMenu.hidden = !willOpen;
     elements.dayFilterButton.setAttribute("aria-expanded", String(willOpen));
   });
@@ -905,6 +979,28 @@
     elements.dayFilterButton.setAttribute("aria-expanded", "false");
     renderDayMenu();
     renderFilters();
+    renderSearchResult();
+    syncSearchEnterButton();
+  });
+
+  elements.sortButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const willOpen = elements.sortMenu.hidden;
+    elements.dayFilterMenu.hidden = true;
+    elements.dayFilterButton.setAttribute("aria-expanded", "false");
+    elements.sortMenu.hidden = !willOpen;
+    elements.sortButton.setAttribute("aria-expanded", String(willOpen));
+  });
+
+  elements.sortMenu.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-sort-mode]");
+    if (!button) return;
+
+    activeSortMode = button.dataset.sortMode;
+    resetSearchEnterSequence();
+    elements.sortMenu.hidden = true;
+    elements.sortButton.setAttribute("aria-expanded", "false");
+    renderSortMenu();
     renderChecklist();
     syncSearchEnterButton();
   });
@@ -917,6 +1013,14 @@
     ) {
       elements.dayFilterMenu.hidden = true;
       elements.dayFilterButton.setAttribute("aria-expanded", "false");
+    }
+    if (
+      !elements.sortMenu.hidden &&
+      !elements.sortMenu.contains(event.target) &&
+      event.target !== elements.sortButton
+    ) {
+      elements.sortMenu.hidden = true;
+      elements.sortButton.setAttribute("aria-expanded", "false");
     }
   });
 
@@ -1027,6 +1131,7 @@
     displayItems = [];
     activeFilter = "all";
     activeDay = "ALL";
+    activeSortMode = "original";
     resetSearchEnterSequence();
     selectedProductKey = null;
     elements.searchInput.value = "";
@@ -1038,6 +1143,7 @@
   window.addEventListener("pageshow", () => {
     if (visit?.products.length) {
       renderDayMenu();
+      renderSortMenu();
       renderFilters();
       if (!elements.checklistSection.hidden) {
         renderChecklist();

@@ -280,6 +280,43 @@
     );
   }
 
+  function selectProducts(products, options = {}) {
+    const filter = options.filter ?? "all";
+    const searchQuery = sanitizeCodeInput(options.searchQuery ?? "");
+    const sortMode = options.sortMode ?? "original";
+    let selected = Array.isArray(products) ? [...products] : [];
+
+    // Searching is a CGO lookup, so checklist status filters must never hide a
+    // matching product. With an empty search, the selected checklist tab applies.
+    if (searchQuery) {
+      selected = selected.filter((product) => product?.code?.startsWith(searchQuery));
+    } else if (filter === "pending") {
+      selected = selected.filter((product) => !product?.reviewed);
+    } else if (filter === "reviewed") {
+      selected = selected.filter((product) => product?.reviewed);
+    }
+
+    // Reviewed always means most recently selected first. The optional code
+    // ordering applies only to Todos/Pendientes and search results.
+    if (!searchQuery && filter === "reviewed") {
+      return selected.sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0));
+    }
+
+    if (sortMode === "ascending") {
+      return selected.sort(
+        (a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code),
+      );
+    }
+
+    if (sortMode === "descending") {
+      return selected.sort(
+        (a, b) => Number(b.code) - Number(a.code) || b.code.localeCompare(a.code),
+      );
+    }
+
+    return selected;
+  }
+
   const api = Object.freeze({
     parseCodes,
     parseProducts,
@@ -291,6 +328,7 @@
     createSelectionSequence,
     takeNextSelectionKey,
     selectionSequenceComplete,
+    selectProducts,
   });
 
   globalScope.OrderCheckCore = api;

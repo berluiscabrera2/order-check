@@ -13,6 +13,7 @@ const {
   createSelectionSequence,
   takeNextSelectionKey,
   selectionSequenceComplete,
+  selectProducts,
 } = require("../core.js");
 
 test("parsea el formato completo y conserva todos los valores como strings", () => {
@@ -281,4 +282,77 @@ test("Enter trata CODE + DAY como identidades independientes", () => {
   assert.equal(takeNextSelectionKey(sequence), "1479|THU");
   assert.equal(takeNextSelectionKey(sequence), "2423|THU");
   assert.equal(takeNextSelectionKey(sequence), null);
+});
+
+test("Todos conserva el orden original por defecto", () => {
+  const products = [
+    { code: "3984", reviewed: false },
+    { code: "0500", reviewed: true, reviewedAt: 20 },
+    { code: "2423", reviewed: false },
+  ];
+
+  assert.deepEqual(
+    selectProducts(products, { filter: "all", sortMode: "original" }).map((item) => item.code),
+    ["3984", "0500", "2423"],
+  );
+});
+
+test("Pendientes conserva el orden original y admite orden ascendente o descendente", () => {
+  const products = [
+    { code: "3984", reviewed: false },
+    { code: "0500", reviewed: true, reviewedAt: 20 },
+    { code: "2423", reviewed: false },
+  ];
+
+  assert.deepEqual(
+    selectProducts(products, { filter: "pending", sortMode: "original" }).map((item) => item.code),
+    ["3984", "2423"],
+  );
+  assert.deepEqual(
+    selectProducts(products, { filter: "pending", sortMode: "ascending" }).map((item) => item.code),
+    ["2423", "3984"],
+  );
+  assert.deepEqual(
+    selectProducts(products, { filter: "pending", sortMode: "descending" }).map((item) => item.code),
+    ["3984", "2423"],
+  );
+});
+
+test("Revisados siempre muestra la selección más reciente arriba", () => {
+  const products = [
+    { code: "3984", reviewed: true, reviewedAt: 10 },
+    { code: "0500", reviewed: true, reviewedAt: 30 },
+    { code: "2423", reviewed: true, reviewedAt: 20 },
+  ];
+
+  assert.deepEqual(
+    selectProducts(products, { filter: "reviewed", sortMode: "ascending" }).map(
+      (item) => item.code,
+    ),
+    ["0500", "2423", "3984"],
+  );
+});
+
+test("la búsqueda encuentra productos sin importar el filtro de checklist", () => {
+  const products = [
+    { code: "2423", reviewed: true, reviewedAt: 10 },
+    { code: "2469", reviewed: false },
+  ];
+
+  assert.deepEqual(
+    selectProducts(products, {
+      filter: "pending",
+      searchQuery: "2423",
+      sortMode: "original",
+    }).map((item) => item.code),
+    ["2423"],
+  );
+  assert.deepEqual(
+    selectProducts(products, {
+      filter: "reviewed",
+      searchQuery: "2469",
+      sortMode: "original",
+    }).map((item) => item.code),
+    ["2469"],
+  );
 });

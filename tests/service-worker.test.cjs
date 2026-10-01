@@ -8,9 +8,10 @@ const vm = require("node:vm");
 
 const source = fs.readFileSync(path.resolve(__dirname, "..", "service-worker.js"), "utf8");
 
-function createWorker(cachedResponses) {
+function createWorker(cachedResponses, cacheKeys = []) {
   const listeners = {};
   const cacheWrites = [];
+  const deletedCaches = [];
   const context = {
     URL,
     Response,
@@ -22,8 +23,11 @@ function createWorker(cachedResponses) {
         addAll: async () => undefined,
         put: async (request) => cacheWrites.push(request.url),
       }),
-      keys: async () => [],
-      delete: async () => true,
+      keys: async () => cacheKeys,
+      delete: async (key) => {
+        deletedCaches.push(key);
+        return true;
+      },
       match: async (request) => {
         const key = typeof request === "string" ? request : request.url;
         return cachedResponses.get(key) ?? null;
@@ -40,7 +44,7 @@ function createWorker(cachedResponses) {
   };
 
   vm.runInNewContext(source, context);
-  return { listeners, cacheWrites };
+  return { listeners, cacheWrites, deletedCaches };
 }
 
 test("sirve un recurso del shell desde caché cuando no hay red", async () => {
@@ -76,4 +80,22 @@ test("una navegación offline vuelve al index de /order-check/", async () => {
 
   const response = await responsePromise;
   assert.equal(await response.text(), "offline app");
+});
+
+test("al activar elimina solo cachés antiguas de Order Check", async () => {
+  const { listeners, deletedCaches } = createWorker(new Map(), [
+    "order-check-shell-v1.8.1",
+    "order-check-shell-v1.9.0",
+    "another-project-shell-v4",
+  ]);
+  let activationPromise;
+
+  listeners.activate({
+    waitUntil: (promise) => {
+      activationPromise = promise;
+    },
+  });
+  await activationPromise;
+
+  assert.deepEqual(deletedCaches, ["order-check-shell-v1.8.1"]);
 });
