@@ -29,11 +29,11 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.2\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.3\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.2\.0/);
+  assert.match(read("index.html"), /v1\.3\.0/);
   assert.match(read("app.js"), /APP_VERSION = "1\.2\.0"/);
 });
 
@@ -55,6 +55,21 @@ test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por c
   assert.match(html, /id="result-cgo-qty"/);
   assert.match(app, /findProduct\(code\)/);
   assert.match(app, /product\.code === code/);
+});
+
+test("Revisados ordena primero los productos marcados más recientemente", () => {
+  const app = read("app.js");
+  assert.match(app, /reviewedAt = Date\.now\(\)/);
+  assert.match(app, /b\.reviewedAt \?\? 0/);
+});
+
+test("Display usa almacenamiento separado y no modifica la lista CGO", () => {
+  const html = read("index.html");
+  const app = read("app.js");
+  assert.match(html, /data-app-tab="display"/);
+  assert.match(html, /id="display-section"/);
+  assert.match(app, /DISPLAY_STORAGE_KEY = "order-check\.display\.v1"/);
+  assert.match(app, /displayItems\.push/);
 });
 
 test("la lista de prueba no está precargada en producción", () => {

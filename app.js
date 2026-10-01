@@ -1,8 +1,9 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.2.0";
+  const APP_VERSION = "1.3.0";
   const STORAGE_KEY = "order-check.visit.v1";
+  const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
 
   const elements = {
@@ -14,6 +15,8 @@
     progressText: document.querySelector("#progress-text"),
     loadedCount: document.querySelector("#loaded-count"),
     visitHeader: document.querySelector("#visit-header"),
+    appTabs: document.querySelector("#app-tabs"),
+    tabButtons: [...document.querySelectorAll("[data-app-tab]")],
     searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
     searchResult: document.querySelector("#search-result"),
@@ -27,6 +30,14 @@
     checklistSection: document.querySelector("#checklist-section"),
     codeList: document.querySelector("#code-list"),
     emptyFilterMessage: document.querySelector("#empty-filter-message"),
+    displaySection: document.querySelector("#display-section"),
+    displayForm: document.querySelector("#display-form"),
+    displayCodeInput: document.querySelector("#display-code-input"),
+    displayQuantityInput: document.querySelector("#display-quantity-input"),
+    displayMessage: document.querySelector("#display-message"),
+    displayCount: document.querySelector("#display-count"),
+    displayList: document.querySelector("#display-list"),
+    displayEmptyMessage: document.querySelector("#display-empty-message"),
     productDetailView: document.querySelector("#product-detail-view"),
     detailBackButton: document.querySelector("#detail-back-button"),
     detailCode: document.querySelector("#detail-code"),
@@ -40,8 +51,14 @@
   };
 
   let visit = loadVisit();
+  let displayItems = visit ? loadDisplayItems() : [];
   let activeFilter = "all";
+  let activeTab = "cgo";
   let selectedProductCode = productCodeFromHash();
+
+  if (!visit) {
+    localStorage.removeItem(DISPLAY_STORAGE_KEY);
+  }
   let lastOpenedProductCode = null;
 
   function productCodeFromHash() {
@@ -63,8 +80,39 @@
     }
   }
 
+  function normalizeDisplayQuantity(value) {
+    const digits = String(value ?? "").replace(/\D/g, "").slice(0, 4);
+    if (!digits) return "";
+    const quantity = Number(digits);
+    return quantity > 0 ? String(quantity) : "";
+  }
+
+  function loadDisplayItems() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(DISPLAY_STORAGE_KEY));
+      if (!Array.isArray(saved)) return [];
+      const items = [];
+      const seen = new Set();
+      for (const item of saved) {
+        const code = core.sanitizeCodeInput(item?.code);
+        const quantity = normalizeDisplayQuantity(item?.quantity);
+        if (code.length !== 4 || !quantity || seen.has(code)) continue;
+        const addedAt = Number(item?.addedAt);
+        seen.add(code);
+        items.push({ code, quantity, addedAt: Number.isFinite(addedAt) && addedAt > 0 ? addedAt : 0 });
+      }
+      return items;
+    } catch {
+      return [];
+    }
+  }
+
   function saveVisit() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(visit));
+  }
+
+  function saveDisplayItems() {
+    localStorage.setItem(DISPLAY_STORAGE_KEY, JSON.stringify(displayItems));
   }
 
   function findProduct(code) {
@@ -86,8 +134,10 @@
 
   function renderVisit() {
     renderProgress();
+    renderTabs();
     renderFilters();
     renderChecklist();
+    renderDisplayList();
     renderSearchResult();
 
     if (selectedProductCode && findProduct(selectedProductCode)) {
@@ -105,6 +155,15 @@
     elements.loadedCount.textContent = `${total} ${total === 1 ? "código cargado" : "códigos cargados"}`;
   }
 
+  function renderTabs() {
+    for (const button of elements.tabButtons) {
+      const selected = button.dataset.appTab === activeTab;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", String(selected));
+      button.setAttribute("tabindex", selected ? "0" : "-1");
+    }
+  }
+
   function renderFilters() {
     for (const button of elements.filterButtons) {
       const selected = button.dataset.filter === activeFilter;
@@ -118,7 +177,10 @@
       return visit.products.filter((product) => !product.reviewed);
     }
     if (activeFilter === "reviewed") {
-      return visit.products.filter((product) => product.reviewed);
+      return visit.products
+        .filter((product) => product.reviewed)
+        .slice()
+        .sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0));
     }
     return visit.products;
   }
@@ -131,6 +193,54 @@
     data.textContent = value;
     item.append(name, data);
     return item;
+  }
+
+  function renderDisplayList() {
+    const items = [...displayItems].sort((a, b) => b.addedAt - a.addedAt);
+    const fragment = document.createDocumentFragment();
+
+    for (const item of items) {
+      const row = document.createElement("li");
+      row.className = "display-row";
+
+      const codeBlock = document.createElement("div");
+      codeBlock.className = "display-code-block";
+      const label = document.createElement("span");
+      label.className = "display-code-label";
+      label.textContent = "Código";
+      const code = document.createElement("strong");
+      code.className = "display-code";
+      code.textContent = item.code;
+
+      const quantityField = document.createElement("label");
+      quantityField.className = "display-quantity-field";
+      const quantityLabel = document.createElement("span");
+      quantityLabel.textContent = "Cantidad display";
+      const quantityInput = document.createElement("input");
+      quantityInput.className = "display-quantity-input";
+      quantityInput.type = "text";
+      quantityInput.inputMode = "numeric";
+      quantityInput.pattern = "[0-9]*";
+      quantityInput.maxLength = 4;
+      quantityInput.value = item.quantity;
+      quantityInput.dataset.displayQuantityCode = item.code;
+      quantityInput.setAttribute("aria-label", `Cantidad de display para ${item.code}`);
+
+      const removeButton = document.createElement("button");
+      removeButton.className = "display-remove-button";
+      removeButton.type = "button";
+      removeButton.dataset.removeDisplayCode = item.code;
+      removeButton.textContent = "Eliminar";
+
+      codeBlock.append(label, code);
+      quantityField.append(quantityLabel, quantityInput);
+      row.append(codeBlock, quantityField, removeButton);
+      fragment.append(row);
+    }
+
+    elements.displayList.replaceChildren(fragment);
+    elements.displayCount.textContent = `${items.length} ${items.length === 1 ? "producto" : "productos"}`;
+    elements.displayEmptyMessage.hidden = items.length > 0;
   }
 
   function renderChecklist() {
@@ -202,6 +312,12 @@
   }
 
   function renderSearchResult() {
+    if (activeTab !== "cgo") {
+      elements.searchResult.hidden = true;
+      elements.checklistSection.hidden = true;
+      return;
+    }
+
     const code = elements.searchInput.value;
     const complete = code.length === 4;
     elements.checklistSection.hidden = code.length > 0;
@@ -244,6 +360,11 @@
       return;
     }
     product.reviewed = shouldReview;
+    if (shouldReview) {
+      product.reviewedAt = Date.now();
+    } else {
+      delete product.reviewedAt;
+    }
     saveVisit();
     renderProgress();
     renderChecklist();
@@ -273,8 +394,10 @@
     lastOpenedProductCode = code;
     renderProductDetail(product);
     elements.visitHeader.hidden = true;
+    elements.appTabs.hidden = true;
     elements.searchCard.hidden = true;
     elements.checklistSection.hidden = true;
+    elements.displaySection.hidden = true;
     elements.productDetailView.hidden = false;
 
     if (updateHistory) {
@@ -289,10 +412,21 @@
     selectedProductCode = null;
     elements.productDetailView.hidden = true;
     elements.visitHeader.hidden = false;
-    elements.searchCard.hidden = false;
-    renderSearchResult();
+    elements.appTabs.hidden = false;
+    renderTabs();
 
-    if (restoreFocus && lastOpenedProductCode) {
+    const showingCgo = activeTab === "cgo";
+    elements.searchCard.hidden = !showingCgo;
+    elements.displaySection.hidden = showingCgo;
+    if (showingCgo) {
+      renderSearchResult();
+    } else {
+      elements.checklistSection.hidden = true;
+      elements.searchResult.hidden = true;
+      renderDisplayList();
+    }
+
+    if (restoreFocus && showingCgo && lastOpenedProductCode) {
       const rowButton = elements.codeList.querySelector(`[data-details-code="${lastOpenedProductCode}"]`);
       rowButton?.focus({ preventScroll: true });
     }
@@ -324,7 +458,10 @@
     }
 
     visit = { products };
+    displayItems = [];
+    localStorage.removeItem(DISPLAY_STORAGE_KEY);
     activeFilter = "all";
+    activeTab = "cgo";
     saveVisit();
     elements.searchInput.value = "";
     setView();
@@ -392,6 +529,85 @@
     });
   }
 
+  for (const button of elements.tabButtons) {
+    button.addEventListener("click", () => {
+      activeTab = button.dataset.appTab;
+      showVisitHome();
+      (activeTab === "display" ? elements.displayCodeInput : elements.searchInput).focus({ preventScroll: true });
+    });
+  }
+
+  elements.displayForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const code = core.sanitizeCodeInput(elements.displayCodeInput.value);
+    const quantity = normalizeDisplayQuantity(elements.displayQuantityInput.value);
+
+    if (code.length !== 4) {
+      elements.displayMessage.textContent = "Escribe un código válido de 4 dígitos.";
+      elements.displayCodeInput.focus();
+      return;
+    }
+    if (!findProduct(code)) {
+      elements.displayMessage.textContent = "Ese código no está en la lista CGO actual.";
+      elements.displayCodeInput.focus();
+      return;
+    }
+    if (!quantity) {
+      elements.displayMessage.textContent = "Escribe una cantidad mayor que 0.";
+      elements.displayQuantityInput.focus();
+      return;
+    }
+
+    const existing = displayItems.find((item) => item.code === code);
+    if (existing) {
+      existing.quantity = quantity;
+      existing.addedAt = Date.now();
+      elements.displayMessage.textContent = `Cantidad de ${code} actualizada.`;
+    } else {
+      displayItems.push({ code, quantity, addedAt: Date.now() });
+      elements.displayMessage.textContent = `${code} agregado a Display.`;
+    }
+    saveDisplayItems();
+    renderDisplayList();
+    elements.displayCodeInput.value = "";
+    elements.displayQuantityInput.value = "1";
+    elements.displayCodeInput.focus({ preventScroll: true });
+  });
+
+  elements.displayCodeInput.addEventListener("input", () => {
+    elements.displayCodeInput.value = core.sanitizeCodeInput(elements.displayCodeInput.value);
+  });
+
+  elements.displayQuantityInput.addEventListener("input", () => {
+    elements.displayQuantityInput.value = String(elements.displayQuantityInput.value ?? "").replace(/\D/g, "").slice(0, 4);
+  });
+
+  elements.displayList.addEventListener("change", (event) => {
+    const input = event.target.closest("input[data-display-quantity-code]");
+    if (!input) return;
+    const item = displayItems.find((entry) => entry.code === input.dataset.displayQuantityCode);
+    const quantity = normalizeDisplayQuantity(input.value);
+    if (!item || !quantity) {
+      elements.displayMessage.textContent = "La cantidad debe ser mayor que 0.";
+      renderDisplayList();
+      return;
+    }
+    item.quantity = quantity;
+    saveDisplayItems();
+    elements.displayMessage.textContent = `Cantidad de ${item.code} actualizada.`;
+    renderDisplayList();
+  });
+
+  elements.displayList.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-remove-display-code]");
+    if (!button) return;
+    const code = button.dataset.removeDisplayCode;
+    displayItems = displayItems.filter((item) => item.code !== code);
+    saveDisplayItems();
+    renderDisplayList();
+    elements.displayMessage.textContent = `${code} eliminado de Display.`;
+  });
+
   elements.newVisitButton.addEventListener("click", () => {
     const confirmed = window.confirm(
       "¿Iniciar una nueva visita? Se borrará la lista CGO actual y todos los checks.",
@@ -401,8 +617,11 @@
     }
 
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(DISPLAY_STORAGE_KEY);
     visit = null;
+    displayItems = [];
     activeFilter = "all";
+    activeTab = "cgo";
     selectedProductCode = null;
     elements.searchInput.value = "";
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);

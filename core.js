@@ -85,12 +85,17 @@
       return null;
     }
 
-    return {
+    const normalized = {
       code,
       inv: normalizeField(item.inv),
       cgoQty: normalizeField(item.cgoQty),
       reviewed: item.reviewed === true || legacyReviewed.has(code),
     };
+    const reviewedAt = Number(item.reviewedAt);
+    if (normalized.reviewed && Number.isFinite(reviewedAt) && reviewedAt > 0) {
+      normalized.reviewedAt = reviewedAt;
+    }
+    return normalized;
   }
 
   function normalizeStoredVisit(value) {

@@ -60,6 +60,11 @@
           <button id="new-visit-button" class="button button--quiet" type="button">Nueva visita</button>
         </header>
 
+        <nav id="app-tabs" class="app-tabs" role="tablist" aria-label="Secciones de la visita">
+          <button class="app-tab is-active" type="button" role="tab" data-app-tab="cgo" aria-selected="true">CGO</button>
+          <button class="app-tab" type="button" role="tab" data-app-tab="display" aria-selected="false" tabindex="-1">Display</button>
+        </nav>
+
         <section id="search-card" class="search-card" aria-labelledby="search-label">
           <label id="search-label" for="search-input">Buscar código</label>
           <input
@@ -116,6 +121,32 @@
           <p id="empty-filter-message" class="empty-state" hidden>No hay códigos en este filtro.</p>
         </section>
 
+        <section id="display-section" class="display-section" aria-labelledby="display-title" hidden>
+          <article class="display-card">
+            <div class="display-heading">
+              <div>
+                <h2 id="display-title">Display</h2>
+                <p>Lista separada para displays. No modifica el CGO ni los checks.</p>
+              </div>
+              <span id="display-count" class="display-count">0 productos</span>
+            </div>
+            <form id="display-form" class="display-form" novalidate>
+              <label class="display-field" for="display-code-input">
+                <span>Código</span>
+                <input id="display-code-input" class="display-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="0000" />
+              </label>
+              <label class="display-field" for="display-quantity-input">
+                <span>Cantidad</span>
+                <input id="display-quantity-input" class="display-quantity-entry" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" value="1" />
+              </label>
+              <button class="button button--primary display-add-button" type="submit">Agregar a Display</button>
+            </form>
+            <p id="display-message" class="display-message" role="status" aria-live="polite"></p>
+          </article>
+          <ul id="display-list" class="display-list" aria-label="Productos para display"></ul>
+          <p id="display-empty-message" class="empty-state">No has agregado productos a Display.</p>
+        </section>
+
         <section
           id="product-detail-view"
           class="product-detail-view"
@@ -157,7 +188,7 @@
     </main>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.2.0</span>
+      <span id="app-version">v1.3.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>
