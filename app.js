@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.7.1";
+  const APP_VERSION = "1.7.2";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -17,6 +17,7 @@
     searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
     clearSearchButton: document.querySelector("#clear-search-button"),
+    searchEnterButton: document.querySelector("#search-enter-button"),
     searchResult: document.querySelector("#search-result"),
     resultTitle: document.querySelector("#result-title"),
     resultMessage: document.querySelector("#result-message"),
@@ -57,6 +58,7 @@
   let preserveSearchKeyboardOnNextDetail = false;
   let directOpenedRow = null;
   let directToggledCheckbox = null;
+  let directSubmittedSearchAt = 0;
 
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
@@ -449,6 +451,43 @@
     elements.clearSearchButton.hidden = elements.searchInput.value.length === 0;
   }
 
+  function syncSearchEnterButton() {
+    const searchFocused =
+      document.activeElement === elements.searchInput &&
+      !elements.searchCard.hidden;
+    const hasQuery = elements.searchInput.value.length > 0;
+    const hasResult = hasQuery && filteredProducts().length > 0;
+
+    elements.searchEnterButton.hidden = !searchFocused;
+    elements.searchEnterButton.disabled = !hasResult;
+    elements.searchEnterButton.setAttribute("aria-disabled", String(!hasResult));
+  }
+
+  function updateKeyboardInset() {
+    const viewport = window.visualViewport;
+    if (!viewport) {
+      document.documentElement.style.setProperty("--keyboard-inset", "0px");
+      return;
+    }
+
+    const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+    document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
+  }
+
+  function submitFirstSearchResult() {
+    if (elements.searchInput.value.length === 0) {
+      return;
+    }
+
+    const firstProduct = filteredProducts()[0];
+    if (!firstProduct) {
+      return;
+    }
+
+    setReviewed(firstProduct.code, !firstProduct.reviewed);
+    clearSearch({ refocus: true });
+  }
+
   function clearSearch({ refocus = false } = {}) {
     elements.searchInput.value = "";
     syncClearSearchButton();
@@ -456,6 +495,7 @@
     if (refocus) {
       elements.searchInput.focus({ preventScroll: true });
     }
+    syncSearchEnterButton();
   }
 
   function clearSearchAndRefocus() {
@@ -463,7 +503,8 @@
   }
 
   function syncScrollTopButton() {
-    elements.scrollTopButton.hidden = window.scrollY < 420;
+    elements.scrollTopButton.hidden =
+      window.scrollY < 420 || document.activeElement === elements.searchInput;
   }
 
   elements.setupForm.addEventListener("submit", (event) => {
@@ -492,9 +533,61 @@
     }
     syncClearSearchButton();
     renderSearchResult();
+    syncSearchEnterButton();
+  });
+
+  elements.searchInput.addEventListener("focus", () => {
+    updateKeyboardInset();
+    syncSearchEnterButton();
+    syncScrollTopButton();
+  });
+
+  elements.searchInput.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      updateKeyboardInset();
+      syncSearchEnterButton();
+      syncScrollTopButton();
+    }, 0);
+  });
+
+  elements.searchInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    submitFirstSearchResult();
   });
 
   elements.clearSearchButton.addEventListener("click", clearSearchAndRefocus);
+
+  function submitSearchFromFloatingButton(event) {
+    if (elements.searchEnterButton.disabled) {
+      return;
+    }
+
+    event.preventDefault();
+    directSubmittedSearchAt = Date.now();
+    submitFirstSearchResult();
+  }
+
+  elements.searchEnterButton.addEventListener(
+    "touchstart",
+    submitSearchFromFloatingButton,
+    { passive: false },
+  );
+  elements.searchEnterButton.addEventListener("mousedown", submitSearchFromFloatingButton);
+  elements.searchEnterButton.addEventListener("click", (event) => {
+    if (Date.now() - directSubmittedSearchAt < 1200) {
+      event.preventDefault();
+      return;
+    }
+    submitFirstSearchResult();
+  });
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", updateKeyboardInset);
+    window.visualViewport.addEventListener("scroll", updateKeyboardInset);
+  }
 
   elements.resultAction.addEventListener("click", () => {
     const code = elements.resultAction.dataset.code;
@@ -735,7 +828,9 @@
   });
 
   elements.appVersion.textContent = `v${APP_VERSION}`;
+  updateKeyboardInset();
   syncClearSearchButton();
+  syncSearchEnterButton();
   syncScrollTopButton();
   setView();
 

@@ -78,7 +78,7 @@
               inputmode="numeric"
               pattern="[0-9]*"
               maxlength="4"
-              enterkeyhint="done"
+              enterkeyhint="go"
               autocomplete="off"
               autocorrect="off"
               spellcheck="false"
@@ -205,6 +205,20 @@
     </main>
 
     <button
+      id="search-enter-button"
+      class="search-enter-button"
+      type="button"
+      aria-label="Marcar primer resultado"
+      title="Marcar primer resultado"
+      aria-disabled="true"
+      disabled
+      hidden
+    >
+      <span aria-hidden="true">↵</span>
+      Enter
+    </button>
+
+    <button
       id="scroll-top-button"
       class="scroll-top-button"
       type="button"
@@ -216,7 +230,7 @@
     </button>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.7.1</span>
+      <span id="app-version">v1.7.2</span>
     </footer>
 
     <script src="/order-check/core.js"></script>
