@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.6.1";
+  const APP_VERSION = "1.6.2";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -12,7 +12,6 @@
     setupForm: document.querySelector("#setup-form"),
     codesInput: document.querySelector("#codes-input"),
     setupMessage: document.querySelector("#setup-message"),
-    progressText: document.querySelector("#progress-text"),
     visitHeader: document.querySelector("#visit-header"),
     displayButton: document.querySelector("#display-button"),
     searchCard: document.querySelector("#search-card"),
@@ -56,6 +55,7 @@
   let activeFilter = "all";
   let selectedProductCode = productCodeFromHash();
   let preserveSearchKeyboardOnNextDetail = false;
+  let directOpenedRow = null;
 
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
@@ -134,7 +134,6 @@
   }
 
   function renderVisit() {
-    renderProgress();
     renderFilters();
     renderChecklist();
     renderDisplayList();
@@ -146,12 +145,6 @@
       selectedProductCode = null;
       showVisitHome();
     }
-  }
-
-  function renderProgress() {
-    const reviewed = visit.products.filter((product) => product.reviewed).length;
-    const total = visit.products.length;
-    elements.progressText.textContent = `${reviewed} de ${total} revisados`;
   }
 
   function renderFilters() {
@@ -355,7 +348,6 @@
       delete product.reviewedAt;
     }
     saveVisit();
-    renderProgress();
     renderFilters();
     renderChecklist();
     if (selectedProductCode === code) {
@@ -511,25 +503,42 @@
     setReviewed(checkbox.dataset.code, checkbox.checked);
   });
 
-  elements.codeList.addEventListener("pointerdown", (event) => {
+  function openSearchResultBeforeBlur(event) {
     const detailsButton = event.target.closest("button[data-details-code]");
     if (
-      detailsButton &&
-      elements.searchInput.value.length > 0 &&
-      document.activeElement === elements.searchInput
+      !detailsButton ||
+      elements.searchInput.value.length === 0 ||
+      document.activeElement !== elements.searchInput
     ) {
-      // Prevent the row button from stealing focus before the detail view opens.
-      event.preventDefault();
-      preserveSearchKeyboardOnNextDetail = true;
+      return;
     }
-  });
+
+    // iOS Safari normally blurs the input late in the tap sequence. Open the
+    // result during the initial touch/mouse gesture and cancel the default
+    // focus transfer so the numeric keyboard stays attached to the search.
+    event.preventDefault();
+    const code = detailsButton.dataset.detailsCode;
+    directOpenedRow = { code, at: Date.now() };
+    preserveSearchKeyboardOnNextDetail = true;
+    showProductDetail(code);
+  }
+
+  elements.codeList.addEventListener("touchstart", openSearchResultBeforeBlur, { passive: false });
+  elements.codeList.addEventListener("mousedown", openSearchResultBeforeBlur);
 
   elements.codeList.addEventListener("click", (event) => {
     const detailsButton = event.target.closest("button[data-details-code]");
     if (!detailsButton) {
       return;
     }
-    showProductDetail(detailsButton.dataset.detailsCode);
+
+    const code = detailsButton.dataset.detailsCode;
+    if (directOpenedRow?.code === code && Date.now() - directOpenedRow.at < 1200) {
+      return;
+    }
+
+    directOpenedRow = null;
+    showProductDetail(code);
   });
 
   for (const button of [elements.detailBackButton, elements.detailAction]) {
