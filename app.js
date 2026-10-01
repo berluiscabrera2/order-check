@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.6.0";
+  const APP_VERSION = "1.6.1";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -55,6 +55,7 @@
   let displayItems = visit ? loadDisplayItems() : [];
   let activeFilter = "all";
   let selectedProductCode = productCodeFromHash();
+  let preserveSearchKeyboardOnNextDetail = false;
 
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
@@ -331,8 +332,13 @@
 
   function renderSearchResult() {
     // Search filters the normal product rows from the first digit onward.
-    // Details only open after the user taps a row, exactly like in "Todos".
+    // While a searched product detail is open, keep the list hidden so the
+    // focused search field can remain on screen without mixing both views.
     elements.searchResult.hidden = true;
+    if (selectedProductCode) {
+      elements.checklistSection.hidden = true;
+      return;
+    }
     elements.checklistSection.hidden = false;
     renderChecklist();
   }
@@ -374,11 +380,17 @@
       return;
     }
 
+    const keepSearchKeyboard =
+      preserveSearchKeyboardOnNextDetail &&
+      elements.searchInput.value.length > 0 &&
+      document.activeElement === elements.searchInput;
+    preserveSearchKeyboardOnNextDetail = false;
+
     selectedProductCode = code;
     lastOpenedProductCode = code;
     renderProductDetail(product);
     elements.visitHeader.hidden = true;
-    elements.searchCard.hidden = true;
+    elements.searchCard.hidden = !keepSearchKeyboard;
     elements.checklistSection.hidden = true;
     elements.displaySection.hidden = true;
     elements.productDetailView.hidden = false;
@@ -387,8 +399,12 @@
       window.history.pushState({ orderCheckDetail: code }, "", `#product-${code}`);
     }
 
-    window.scrollTo({ top: 0, behavior: "auto" });
-    elements.detailBackButton.focus({ preventScroll: true });
+    if (keepSearchKeyboard) {
+      elements.searchInput.focus({ preventScroll: true });
+    } else {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      elements.detailBackButton.focus({ preventScroll: true });
+    }
   }
 
   function showVisitHome({ restoreFocus = false } = {}) {
@@ -401,7 +417,9 @@
     renderFilters();
     renderSearchResult();
 
-    if (restoreFocus && lastOpenedProductCode) {
+    if (restoreFocus && elements.searchInput.value.length > 0) {
+      elements.searchInput.focus({ preventScroll: true });
+    } else if (restoreFocus && lastOpenedProductCode) {
       const rowButton = elements.codeList.querySelector(`[data-details-code="${lastOpenedProductCode}"]`);
       rowButton?.focus({ preventScroll: true });
     }
@@ -493,6 +511,19 @@
     setReviewed(checkbox.dataset.code, checkbox.checked);
   });
 
+  elements.codeList.addEventListener("pointerdown", (event) => {
+    const detailsButton = event.target.closest("button[data-details-code]");
+    if (
+      detailsButton &&
+      elements.searchInput.value.length > 0 &&
+      document.activeElement === elements.searchInput
+    ) {
+      // Prevent the row button from stealing focus before the detail view opens.
+      event.preventDefault();
+      preserveSearchKeyboardOnNextDetail = true;
+    }
+  });
+
   elements.codeList.addEventListener("click", (event) => {
     const detailsButton = event.target.closest("button[data-details-code]");
     if (!detailsButton) {
@@ -500,6 +531,14 @@
     }
     showProductDetail(detailsButton.dataset.detailsCode);
   });
+
+  for (const button of [elements.detailBackButton, elements.detailAction]) {
+    button.addEventListener("pointerdown", (event) => {
+      if (!elements.searchCard.hidden && document.activeElement === elements.searchInput) {
+        event.preventDefault();
+      }
+    });
+  }
 
   elements.detailBackButton.addEventListener("click", returnToList);
 

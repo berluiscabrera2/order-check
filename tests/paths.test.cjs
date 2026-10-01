@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.6\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.6\.1/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.6\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.6\.0"/);
+  assert.match(read("index.html"), /v1\.6\.1/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.6\.1"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -131,6 +131,15 @@ test("el buscador tiene botón X para limpiar y botón flotante para volver arri
   assert.match(app, /clearSearchButton\.addEventListener\("click", clearSearchAndRefocus\)/);
   assert.match(app, /window\.addEventListener\("scroll", syncScrollTopButton/);
   assert.match(app, /window\.scrollTo\(\{ top: 0/);
+});
+
+test("al abrir un resultado de búsqueda se preserva el foco del input para mantener el teclado", () => {
+  const app = read("app.js");
+  assert.match(app, /preserveSearchKeyboardOnNextDetail/);
+  assert.match(app, /codeList\.addEventListener\("pointerdown"/);
+  assert.match(app, /event\.preventDefault\(\)/);
+  assert.match(app, /elements\.searchCard\.hidden = !keepSearchKeyboard/);
+  assert.match(app, /elements\.searchInput\.focus\(\{ preventScroll: true \}\)/);
 });
 
 test("la lista de prueba no está precargada en producción", () => {
