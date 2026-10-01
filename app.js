@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.3.0";
+  const APP_VERSION = "1.3.1";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -544,11 +544,6 @@
 
     if (code.length !== 4) {
       elements.displayMessage.textContent = "Escribe un código válido de 4 dígitos.";
-      elements.displayCodeInput.focus();
-      return;
-    }
-    if (!findProduct(code)) {
-      elements.displayMessage.textContent = "Ese código no está en la lista CGO actual.";
       elements.displayCodeInput.focus();
       return;
     }
