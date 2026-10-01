@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.1.0";
+  const APP_VERSION = "1.2.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const core = window.OrderCheckCore;
 
@@ -13,6 +13,8 @@
     setupMessage: document.querySelector("#setup-message"),
     progressText: document.querySelector("#progress-text"),
     loadedCount: document.querySelector("#loaded-count"),
+    visitHeader: document.querySelector("#visit-header"),
+    searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
     searchResult: document.querySelector("#search-result"),
     resultTitle: document.querySelector("#result-title"),
@@ -25,6 +27,13 @@
     checklistSection: document.querySelector("#checklist-section"),
     codeList: document.querySelector("#code-list"),
     emptyFilterMessage: document.querySelector("#empty-filter-message"),
+    productDetailView: document.querySelector("#product-detail-view"),
+    detailBackButton: document.querySelector("#detail-back-button"),
+    detailCode: document.querySelector("#detail-code"),
+    detailState: document.querySelector("#detail-state"),
+    detailInv: document.querySelector("#detail-inv"),
+    detailCgoQty: document.querySelector("#detail-cgo-qty"),
+    detailAction: document.querySelector("#detail-action"),
     filterButtons: [...document.querySelectorAll("[data-filter]")],
     newVisitButton: document.querySelector("#new-visit-button"),
     appVersion: document.querySelector("#app-version"),
@@ -32,6 +41,13 @@
 
   let visit = loadVisit();
   let activeFilter = "all";
+  let selectedProductCode = productCodeFromHash();
+  let lastOpenedProductCode = null;
+
+  function productCodeFromHash() {
+    const match = window.location.hash.match(/^#product-(\d{4})$/);
+    return match ? match[1] : null;
+  }
 
   function loadVisit() {
     try {
@@ -73,6 +89,13 @@
     renderFilters();
     renderChecklist();
     renderSearchResult();
+
+    if (selectedProductCode && findProduct(selectedProductCode)) {
+      showProductDetail(selectedProductCode, false);
+    } else {
+      selectedProductCode = null;
+      showVisitHome();
+    }
   }
 
   function renderProgress() {
@@ -118,8 +141,11 @@
       const item = document.createElement("li");
       item.className = `code-row${product.reviewed ? " is-reviewed" : ""}`;
 
-      const label = document.createElement("label");
-      label.className = "code-label";
+      const rowMain = document.createElement("div");
+      rowMain.className = "code-row-main";
+
+      const checkControl = document.createElement("label");
+      checkControl.className = "code-check-control";
 
       const checkbox = document.createElement("input");
       checkbox.className = "code-checkbox";
@@ -127,6 +153,17 @@
       checkbox.checked = product.reviewed;
       checkbox.dataset.code = product.code;
       checkbox.setAttribute("aria-label", `${product.reviewed ? "Desmarcar" : "Marcar"} código ${product.code}`);
+
+      const detailsButton = document.createElement("button");
+      detailsButton.className = "code-details-button";
+      detailsButton.type = "button";
+      detailsButton.dataset.detailsCode = product.code;
+      detailsButton.setAttribute(
+        "aria-label",
+        `Ver detalles del código ${product.code}, INV ${product.inv}, cantidad CGO ${product.cgoQty}, ${
+          product.reviewed ? "revisado" : "pendiente"
+        }`,
+      );
 
       const content = document.createElement("span");
       content.className = "code-content";
@@ -146,10 +183,17 @@
       meta.className = "code-meta";
       meta.append(createMetaItem("INV", product.inv), createMetaItem("QTY", product.cgoQty));
 
+      const chevron = document.createElement("span");
+      chevron.className = "code-chevron";
+      chevron.setAttribute("aria-hidden", "true");
+      chevron.textContent = "›";
+
       top.append(value, state);
       content.append(top, meta);
-      label.append(checkbox, content);
-      item.append(label);
+      checkControl.append(checkbox);
+      detailsButton.append(content, chevron);
+      rowMain.append(checkControl, detailsButton);
+      item.append(rowMain);
       fragment.append(item);
     }
 
@@ -203,6 +247,65 @@
     saveVisit();
     renderProgress();
     renderChecklist();
+    if (selectedProductCode === code) {
+      renderProductDetail(product);
+    }
+  }
+
+  function renderProductDetail(product) {
+    elements.detailCode.textContent = product.code;
+    elements.detailInv.textContent = product.inv;
+    elements.detailCgoQty.textContent = product.cgoQty;
+    elements.detailState.textContent = product.reviewed ? "Revisado" : "Pendiente";
+    elements.detailState.classList.toggle("is-reviewed", product.reviewed);
+    elements.detailAction.classList.toggle("is-unmark", product.reviewed);
+    elements.detailAction.textContent = product.reviewed ? "↶ Desmarcar" : "✓ Marcar como revisado";
+    elements.detailAction.dataset.code = product.code;
+  }
+
+  function showProductDetail(code, updateHistory = true) {
+    const product = findProduct(code);
+    if (!product) {
+      return;
+    }
+
+    selectedProductCode = code;
+    lastOpenedProductCode = code;
+    renderProductDetail(product);
+    elements.visitHeader.hidden = true;
+    elements.searchCard.hidden = true;
+    elements.checklistSection.hidden = true;
+    elements.productDetailView.hidden = false;
+
+    if (updateHistory) {
+      window.history.pushState({ orderCheckDetail: code }, "", `#product-${code}`);
+    }
+
+    window.scrollTo({ top: 0, behavior: "auto" });
+    elements.detailBackButton.focus({ preventScroll: true });
+  }
+
+  function showVisitHome({ restoreFocus = false } = {}) {
+    selectedProductCode = null;
+    elements.productDetailView.hidden = true;
+    elements.visitHeader.hidden = false;
+    elements.searchCard.hidden = false;
+    renderSearchResult();
+
+    if (restoreFocus && lastOpenedProductCode) {
+      const rowButton = elements.codeList.querySelector(`[data-details-code="${lastOpenedProductCode}"]`);
+      rowButton?.focus({ preventScroll: true });
+    }
+  }
+
+  function returnToList() {
+    if (window.history.state?.orderCheckDetail) {
+      window.history.back();
+      return;
+    }
+
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    showVisitHome({ restoreFocus: true });
   }
 
   function clearSearchAndRefocus() {
@@ -254,6 +357,33 @@
     setReviewed(checkbox.dataset.code, checkbox.checked);
   });
 
+  elements.codeList.addEventListener("click", (event) => {
+    const detailsButton = event.target.closest("button[data-details-code]");
+    if (!detailsButton) {
+      return;
+    }
+    showProductDetail(detailsButton.dataset.detailsCode);
+  });
+
+  elements.detailBackButton.addEventListener("click", returnToList);
+
+  elements.detailAction.addEventListener("click", () => {
+    const product = findProduct(elements.detailAction.dataset.code);
+    if (!product) {
+      return;
+    }
+    setReviewed(product.code, !product.reviewed);
+  });
+
+  window.addEventListener("popstate", () => {
+    const code = productCodeFromHash();
+    if (code && findProduct(code)) {
+      showProductDetail(code, false);
+    } else {
+      showVisitHome({ restoreFocus: true });
+    }
+  });
+
   for (const button of elements.filterButtons) {
     button.addEventListener("click", () => {
       activeFilter = button.dataset.filter;
@@ -273,7 +403,9 @@
     localStorage.removeItem(STORAGE_KEY);
     visit = null;
     activeFilter = "all";
+    selectedProductCode = null;
     elements.searchInput.value = "";
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     setView();
     elements.codesInput.focus({ preventScroll: true });
   });

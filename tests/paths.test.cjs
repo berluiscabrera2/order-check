@@ -29,12 +29,23 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.1\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.2\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.1\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.1\.0"/);
+  assert.match(read("index.html"), /v1\.2\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.2\.0"/);
+});
+
+test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
+  const html = read("index.html");
+  const app = read("app.js");
+  assert.match(html, /id="product-detail-view"/);
+  assert.match(html, /id="detail-back-button"/);
+  assert.match(html, /Volver a la lista/);
+  assert.match(app, /data-details-code/);
+  assert.match(app, /history\.pushState/);
+  assert.match(app, /addEventListener\("popstate"/);
 });
 
 test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por código", () => {

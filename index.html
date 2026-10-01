@@ -51,7 +51,7 @@
       </section>
 
       <section id="visit-view" class="view" aria-labelledby="visit-title" hidden>
-        <header class="visit-header">
+        <header id="visit-header" class="visit-header">
           <div>
             <h1 id="visit-title">Order Check</h1>
             <p id="progress-text" class="progress-text" aria-live="polite">0 de 0 revisados</p>
@@ -60,7 +60,7 @@
           <button id="new-visit-button" class="button button--quiet" type="button">Nueva visita</button>
         </header>
 
-        <section class="search-card" aria-labelledby="search-label">
+        <section id="search-card" class="search-card" aria-labelledby="search-label">
           <label id="search-label" for="search-input">Buscar código</label>
           <input
             id="search-input"
@@ -115,11 +115,49 @@
           <ul id="code-list" class="code-list" aria-label="Códigos CGO"></ul>
           <p id="empty-filter-message" class="empty-state" hidden>No hay códigos en este filtro.</p>
         </section>
+
+        <section
+          id="product-detail-view"
+          class="product-detail-view"
+          aria-labelledby="product-detail-title"
+          hidden
+        >
+          <button id="detail-back-button" class="button button--back" type="button">
+            <span aria-hidden="true">←</span>
+            Volver a la lista
+          </button>
+
+          <article class="product-detail-card">
+            <p class="detail-eyebrow">Producto CGO</p>
+            <div class="detail-heading">
+              <h2 id="product-detail-title">
+                Código <span id="detail-code" class="detail-code"></span>
+              </h2>
+              <span id="detail-state" class="detail-state"></span>
+            </div>
+
+            <p class="detail-cgo-status">✓ CGO SÍ</p>
+            <p class="detail-message">Ya está siendo pedido.</p>
+
+            <div class="detail-values" aria-label="Información del producto">
+              <div class="detail-value">
+                <span>INV</span>
+                <strong id="detail-inv">-</strong>
+              </div>
+              <div class="detail-value">
+                <span>CGO QTY</span>
+                <strong id="detail-cgo-qty">-</strong>
+              </div>
+            </div>
+
+            <button id="detail-action" class="button button--result" type="button"></button>
+          </article>
+        </section>
       </section>
     </main>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.1.0</span>
+      <span id="app-version">v1.2.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>
