@@ -4,12 +4,12 @@ PWA móvil para comprobar rápidamente si un código de cuatro dígitos aparece 
 
 ## Características
 
-- Importación `CODE|INV|CGOQTY`, formato simple de V1 o una mezcla de ambos.
-- Parser endurecido: conserva ceros iniciales, mantiene correctamente las columnas CODE/INV/CGO QTY, acepta pipe, tablas Markdown y tabs, completa datos faltantes con `-`, fusiona duplicados sin perder metadata y rechaza códigos incrustados en números más largos.
+- Importación principal `CODE|INV|CGOQTY|DAY`, con DAY en tres letras (MON–SUN). El formato anterior sin DAY sigue siendo compatible.
+- Parser endurecido: conserva ceros iniciales y CODE/INV/CGO QTY/DAY. El mismo CODE se mantiene separado entre días distintos y solo se fusiona cuando coincide CODE + DAY.
 - Búsqueda incremental desde el primer dígito, con los 4 dígitos centrados y botón X para limpiar, respetando el filtro activo. Mientras el buscador está enfocado aparece un botón flotante azul Enter abajo a la derecha. Si hay varios resultados, cada pulsación procesa exactamente uno en orden de arriba hacia abajo; la búsqueda se mantiene hasta procesar el último y luego se limpia, conservando el teclado abierto.
 - Filas optimizadas para uso rápido con la mano derecha: un acceso pequeño a detalles queda a la izquierda y casi todo el resto de la fila funciona como área de marcado, con el checkbox grande a la derecha. Al marcar o desmarcar, la búsqueda se limpia automáticamente; si el teclado estaba abierto, se mantiene abierto.
-- Checklist con conteos que se refrescan desde la carga inicial: Todos y Pendientes ordenados de menor a mayor; Revisados usa timestamps monotónicos para garantizar que lo último marcado quede arriba incluso con taps extremadamente rápidos.
-- Display vive en un botón superior separado; abre su propia pantalla con botón Volver y mantiene una lista independiente de código + cantidad.
+- Checklist con conteos por día. Un icono compacto junto a Display abre un menú ALL/MON/TUE/WED/THU/FRI/SAT/SUN según los días cargados. Blanco = pendiente y verde = revisado; el texto de estado se eliminó de cada fila.
+- Display vive en un botón superior separado; a su lado está el filtro por día. El título visible es un grupo editable de 1 a 3 emojis (por defecto 🚀👾).
 - Persistencia local de la visita, los checks y Display mediante `localStorage`.
 - Instalación en iPhone desde Safari y funcionamiento offline mediante service worker.
 - Botón flotante para volver al inicio al hacer scroll y layout compacto para aprovechar mejor la pantalla.
@@ -38,4 +38,4 @@ Los pushes a `main` ejecutan las pruebas y publican el sitio con GitHub Actions 
 
 <https://berluiscabrera2.github.io/order-check/>
 
-Versión actual: **v1.7.4**
+Versión actual: **v1.8.0**
