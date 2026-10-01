@@ -29,11 +29,11 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.3\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.3\.1/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.3\.0/);
+  assert.match(read("index.html"), /v1\.3\.1/);
   assert.match(read("app.js"), /APP_VERSION = "1\.3\.0"/);
 });
 
@@ -70,6 +70,11 @@ test("Display usa almacenamiento separado y no modifica la lista CGO", () => {
   assert.match(html, /id="display-section"/);
   assert.match(app, /DISPLAY_STORAGE_KEY = "order-check\.display\.v1"/);
   assert.match(app, /displayItems\.push/);
+});
+
+test("Display permite cualquier código válido de 4 dígitos aunque no esté en CGO", () => {
+  const app = read("app.js");
+  assert.doesNotMatch(app, /Ese código no está en la lista CGO actual/);
 });
 
 test("la lista de prueba no está precargada en producción", () => {
