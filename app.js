@@ -1,9 +1,11 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.7.4";
+  const APP_VERSION = "1.8.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
+  const TITLE_STORAGE_KEY = "order-check.title-emojis.v1";
+  const DAY_ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
   const core = window.OrderCheckCore;
 
   const elements = {
@@ -13,7 +15,10 @@
     codesInput: document.querySelector("#codes-input"),
     setupMessage: document.querySelector("#setup-message"),
     visitHeader: document.querySelector("#visit-header"),
+    emojiTitleButton: document.querySelector("#emoji-title-button"),
     displayButton: document.querySelector("#display-button"),
+    dayFilterButton: document.querySelector("#day-filter-button"),
+    dayFilterMenu: document.querySelector("#day-filter-menu"),
     searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
     clearSearchButton: document.querySelector("#clear-search-button"),
@@ -41,6 +46,7 @@
     productDetailView: document.querySelector("#product-detail-view"),
     detailBackButton: document.querySelector("#detail-back-button"),
     detailCode: document.querySelector("#detail-code"),
+    detailDay: document.querySelector("#detail-day"),
     detailState: document.querySelector("#detail-state"),
     detailInv: document.querySelector("#detail-inv"),
     detailCgoQty: document.querySelector("#detail-cgo-qty"),
@@ -54,7 +60,8 @@
   let visit = loadVisit();
   let displayItems = visit ? loadDisplayItems() : [];
   let activeFilter = "all";
-  let selectedProductCode = productCodeFromHash();
+  let activeDay = "ALL";
+  let selectedProductKey = productKeyFromHash();
   let preserveSearchKeyboardOnNextDetail = false;
   let directOpenedRow = null;
   let directToggledCheckbox = null;
@@ -64,11 +71,20 @@
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
   }
-  let lastOpenedProductCode = null;
+  let lastOpenedProductKey = null;
 
-  function productCodeFromHash() {
-    const match = window.location.hash.match(/^#product-(\d{4})$/);
-    return match ? match[1] : null;
+  function productKeyFromHash() {
+    const prefix = "#product-";
+    if (!window.location.hash.startsWith(prefix)) return null;
+
+    try {
+      const raw = decodeURIComponent(window.location.hash.slice(prefix.length));
+      if (/^\d{4}$/.test(raw)) return core.productKey(raw);
+      const [code, day] = raw.split("|");
+      return core.productKey(code, day);
+    } catch {
+      return null;
+    }
   }
 
   function loadVisit() {
@@ -120,8 +136,77 @@
     localStorage.setItem(DISPLAY_STORAGE_KEY, JSON.stringify(displayItems));
   }
 
-  function findProduct(code) {
-    return visit?.products.find((product) => product.code === code) ?? null;
+  function keyForProduct(product) {
+    return core.productKey(product?.code, product?.day);
+  }
+
+  function findProduct(key) {
+    if (!key) return null;
+    return visit?.products.find((product) => keyForProduct(product) === key) ?? null;
+  }
+
+  function productsForActiveDay() {
+    if (activeDay === "ALL") return [...visit.products];
+    return visit.products.filter((product) => product.day === activeDay);
+  }
+
+  function availableDays() {
+    const present = new Set(
+      visit.products
+        .map((product) => product.day)
+        .filter((day) => typeof day === "string" && day !== "-"),
+    );
+    return DAY_ORDER.filter((day) => present.has(day));
+  }
+
+  function getGraphemes(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return [];
+    if (typeof Intl?.Segmenter === "function") {
+      return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map(
+        (part) => part.segment,
+      );
+    }
+    return Array.from(text);
+  }
+
+  function normalizeEmojiTitle(value) {
+    const parts = getGraphemes(value);
+    if (parts.length < 1 || parts.length > 3) return null;
+    if (!parts.every((part) => /\p{Extended_Pictographic}/u.test(part))) return null;
+    return parts.join("");
+  }
+
+  function loadEmojiTitle() {
+    return normalizeEmojiTitle(localStorage.getItem(TITLE_STORAGE_KEY)) ?? "🚀👾";
+  }
+
+  function renderEmojiTitle() {
+    elements.emojiTitleButton.textContent = loadEmojiTitle();
+  }
+
+  function renderDayMenu() {
+    const days = availableDays();
+    if (activeDay !== "ALL" && !days.includes(activeDay)) activeDay = "ALL";
+
+    const fragment = document.createDocumentFragment();
+    for (const day of ["ALL", ...days]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `day-menu-option${day === activeDay ? " is-active" : ""}`;
+      button.dataset.day = day;
+      button.setAttribute("aria-pressed", String(day === activeDay));
+      button.textContent = day;
+      fragment.append(button);
+    }
+    elements.dayFilterMenu.replaceChildren(fragment);
+    elements.dayFilterButton.hidden = days.length === 0;
+    elements.dayFilterButton.setAttribute(
+      "aria-label",
+      activeDay === "ALL" ? "Filtrar por día" : `Día seleccionado: ${activeDay}`,
+    );
+    elements.dayFilterButton.title =
+      activeDay === "ALL" ? "Filtrar por día" : `Día: ${activeDay}`;
   }
 
   function setView() {
@@ -130,7 +215,8 @@
     elements.visitView.hidden = !hasVisit;
 
     if (hasVisit) {
-      // Paint the filter counts immediately before any heavier list work.
+      renderEmojiTitle();
+      renderDayMenu();
       renderFilters();
       renderVisit();
     } else {
@@ -140,24 +226,26 @@
   }
 
   function renderVisit() {
+    renderDayMenu();
     renderFilters();
     renderChecklist();
     renderDisplayList();
     renderSearchResult();
 
-    if (selectedProductCode && findProduct(selectedProductCode)) {
-      showProductDetail(selectedProductCode, false);
+    if (selectedProductKey && findProduct(selectedProductKey)) {
+      showProductDetail(selectedProductKey, false);
     } else {
-      selectedProductCode = null;
+      selectedProductKey = null;
       showVisitHome();
     }
   }
 
   function renderFilters() {
+    const dayProducts = productsForActiveDay();
     const counts = {
-      all: visit.products.length,
-      pending: visit.products.filter((product) => !product.reviewed).length,
-      reviewed: visit.products.filter((product) => product.reviewed).length,
+      all: dayProducts.length,
+      pending: dayProducts.filter((product) => !product.reviewed).length,
+      reviewed: dayProducts.filter((product) => product.reviewed).length,
     };
     const labels = {
       all: "Todos",
@@ -175,14 +263,12 @@
   }
 
   function filteredProducts() {
-    let products;
+    let products = productsForActiveDay();
 
     if (activeFilter === "pending") {
-      products = visit.products.filter((product) => !product.reviewed);
+      products = products.filter((product) => !product.reviewed);
     } else if (activeFilter === "reviewed") {
-      products = visit.products.filter((product) => product.reviewed);
-    } else {
-      products = [...visit.products];
+      products = products.filter((product) => product.reviewed);
     }
 
     const searchQuery = elements.searchInput?.value ?? "";
@@ -274,19 +360,23 @@
       const checkbox = document.createElement("input");
       checkbox.className = "code-checkbox";
       checkbox.type = "checkbox";
+      const productKey = keyForProduct(product);
       checkbox.checked = product.reviewed;
-      checkbox.dataset.code = product.code;
-      checkbox.setAttribute("aria-label", `${product.reviewed ? "Desmarcar" : "Marcar"} código ${product.code}`);
+      checkbox.dataset.productKey = productKey;
+      checkbox.setAttribute(
+        "aria-label",
+        `${product.reviewed ? "Desmarcar" : "Marcar"} código ${product.code}${
+          product.day ? ` para ${product.day}` : ""
+        }`,
+      );
 
       const detailsButton = document.createElement("button");
       detailsButton.className = "code-details-button";
       detailsButton.type = "button";
-      detailsButton.dataset.detailsCode = product.code;
+      detailsButton.dataset.detailsKey = productKey;
       detailsButton.setAttribute(
         "aria-label",
-        `Ver detalles del código ${product.code}, INV ${product.inv}, cantidad CGO ${product.cgoQty}, ${
-          product.reviewed ? "revisado" : "pendiente"
-        }`,
+        `Ver detalles del código ${product.code}${product.day ? `, día ${product.day}` : ""}, INV ${product.inv}, cantidad CGO ${product.cgoQty}`,
       );
 
       const content = document.createElement("span");
@@ -299,9 +389,10 @@
       value.className = "code-value";
       value.textContent = product.code;
 
-      const state = document.createElement("span");
-      state.className = "code-state";
-      state.textContent = product.reviewed ? "Revisado" : "Pendiente";
+      const day = document.createElement("span");
+      day.className = "code-day";
+      day.textContent = product.day ?? "";
+      day.hidden = !product.day;
 
       const meta = document.createElement("span");
       meta.className = "code-meta";
@@ -312,7 +403,8 @@
       chevron.setAttribute("aria-hidden", "true");
       chevron.textContent = "›";
 
-      top.append(value, state);
+      top.append(value);
+      if (product.day) top.append(day);
       content.append(top, meta);
       // Keep the small details target on the left. The entire remaining
       // right side is one large checkbox target for fast one-handed use.
@@ -336,7 +428,7 @@
     // While a searched product detail is open, keep the list hidden so the
     // focused search field can remain on screen without mixing both views.
     elements.searchResult.hidden = true;
-    if (selectedProductCode) {
+    if (selectedProductKey) {
       elements.checklistSection.hidden = true;
       return;
     }
@@ -344,8 +436,8 @@
     renderChecklist();
   }
 
-  function setReviewed(code, shouldReview) {
-    const product = findProduct(code);
+  function setReviewed(key, shouldReview) {
+    const product = findProduct(key);
     if (!product) {
       return;
     }
@@ -358,24 +450,27 @@
     saveVisit();
     renderFilters();
     renderChecklist();
-    if (selectedProductCode === code) {
+    if (selectedProductKey === key) {
       renderProductDetail(product);
     }
   }
 
   function renderProductDetail(product) {
+    const key = keyForProduct(product);
     elements.detailCode.textContent = product.code;
+    elements.detailDay.textContent = product.day ?? "";
+    elements.detailDay.hidden = !product.day;
     elements.detailInv.textContent = product.inv;
     elements.detailCgoQty.textContent = product.cgoQty;
     elements.detailState.textContent = product.reviewed ? "Revisado" : "Pendiente";
     elements.detailState.classList.toggle("is-reviewed", product.reviewed);
     elements.detailAction.classList.toggle("is-unmark", product.reviewed);
     elements.detailAction.textContent = product.reviewed ? "↶ Desmarcar" : "✓ Marcar como revisado";
-    elements.detailAction.dataset.code = product.code;
+    elements.detailAction.dataset.productKey = key;
   }
 
-  function showProductDetail(code, updateHistory = true) {
-    const product = findProduct(code);
+  function showProductDetail(key, updateHistory = true) {
+    const product = findProduct(key);
     if (!product) {
       return;
     }
@@ -386,8 +481,8 @@
       document.activeElement === elements.searchInput;
     preserveSearchKeyboardOnNextDetail = false;
 
-    selectedProductCode = code;
-    lastOpenedProductCode = code;
+    selectedProductKey = key;
+    lastOpenedProductKey = key;
     renderProductDetail(product);
     elements.visitHeader.hidden = true;
     elements.searchCard.hidden = !keepSearchKeyboard;
@@ -396,7 +491,11 @@
     elements.productDetailView.hidden = false;
 
     if (updateHistory) {
-      window.history.pushState({ orderCheckDetail: code }, "", `#product-${code}`);
+      window.history.pushState(
+        { orderCheckDetail: key },
+        "",
+        `#product-${encodeURIComponent(key)}`,
+      );
     }
 
     if (keepSearchKeyboard) {
@@ -408,25 +507,28 @@
   }
 
   function showVisitHome({ restoreFocus = false } = {}) {
-    selectedProductCode = null;
+    selectedProductKey = null;
     elements.productDetailView.hidden = true;
     elements.displaySection.hidden = true;
     elements.visitHeader.hidden = false;
     elements.searchCard.hidden = false;
     elements.checklistSection.hidden = false;
+    renderDayMenu();
     renderFilters();
     renderSearchResult();
 
     if (restoreFocus && elements.searchInput.value.length > 0) {
       elements.searchInput.focus({ preventScroll: true });
-    } else if (restoreFocus && lastOpenedProductCode) {
-      const rowButton = elements.codeList.querySelector(`[data-details-code="${lastOpenedProductCode}"]`);
+    } else if (restoreFocus && lastOpenedProductKey) {
+      const rowButton = [...elements.codeList.querySelectorAll("[data-details-key]")].find(
+        (button) => button.dataset.detailsKey === lastOpenedProductKey,
+      );
       rowButton?.focus({ preventScroll: true });
     }
   }
 
   function showDisplayView() {
-    selectedProductCode = null;
+    selectedProductKey = null;
     elements.productDetailView.hidden = true;
     elements.visitHeader.hidden = true;
     elements.searchCard.hidden = true;
@@ -465,11 +567,13 @@
     if (
       !searchEnterSequence ||
       searchEnterSequence.query !== query ||
-      searchEnterSequence.filter !== activeFilter
+      searchEnterSequence.filter !== activeFilter ||
+      searchEnterSequence.day !== activeDay
     ) {
       searchEnterSequence = {
         query,
         filter: activeFilter,
+        day: activeDay,
         queue: core.createSelectionSequence(filteredProducts()),
       };
     }
@@ -511,15 +615,15 @@
       return;
     }
 
-    const code = core.takeNextSelectionCode(sequence.queue);
-    if (!code) {
+    const key = core.takeNextSelectionKey(sequence.queue);
+    if (!key) {
       syncSearchEnterButton();
       return;
     }
 
-    const product = findProduct(code);
+    const product = findProduct(key);
     if (product) {
-      setReviewed(product.code, !product.reviewed);
+      setReviewed(key, !product.reviewed);
     }
 
     if (core.selectionSequenceComplete(sequence.queue)) {
@@ -566,6 +670,8 @@
     displayItems = [];
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
     activeFilter = "all";
+    activeDay = "ALL";
+    resetSearchEnterSequence();
     saveVisit();
     elements.searchInput.value = "";
     setView();
@@ -650,28 +756,26 @@
 
   elements.resultAction.addEventListener("click", () => {
     const code = elements.resultAction.dataset.code;
-    const product = code ? findProduct(code) : null;
-    if (!product) {
-      return;
-    }
-    setReviewed(code, !product.reviewed);
+    const product = code ? filteredProducts().find((item) => item.code === code) : null;
+    if (!product) return;
+    setReviewed(keyForProduct(product), !product.reviewed);
     clearSearchAndRefocus();
   });
 
   elements.codeList.addEventListener("change", (event) => {
-    const checkbox = event.target.closest("input[data-code]");
+    const checkbox = event.target.closest("input[data-product-key]");
     if (!checkbox) {
       return;
     }
 
-    const code = checkbox.dataset.code;
+    const key = checkbox.dataset.productKey;
     if (directToggledCheckbox === checkbox) {
       directToggledCheckbox = null;
       return;
     }
 
     const hadSearch = elements.searchInput.value.length > 0;
-    setReviewed(code, checkbox.checked);
+    setReviewed(key, checkbox.checked);
     if (hadSearch) {
       clearSearch();
     }
@@ -679,7 +783,7 @@
 
   function toggleSearchCheckboxBeforeBlur(event) {
     const checkControl = event.target.closest(".code-check-control");
-    const checkbox = checkControl?.querySelector("input[data-code]");
+    const checkbox = checkControl?.querySelector("input[data-product-key]");
     if (
       !checkbox ||
       elements.searchInput.value.length === 0 ||
@@ -692,8 +796,8 @@
     // numeric keyboard. Toggle it ourselves at the start of the gesture and
     // cancel the native focus transfer so the search field stays active.
     event.preventDefault();
-    const code = checkbox.dataset.code;
-    const product = findProduct(code);
+    const key = checkbox.dataset.productKey;
+    const product = findProduct(key);
     if (!product) {
       return;
     }
@@ -702,7 +806,7 @@
     // This suppresses only a synthetic follow-up event from the same tap,
     // never a legitimate second tap on the newly rendered row.
     directToggledCheckbox = checkbox;
-    setReviewed(code, !product.reviewed);
+    setReviewed(key, !product.reviewed);
     clearSearch({ refocus: true });
   }
 
@@ -710,7 +814,7 @@
   elements.codeList.addEventListener("mousedown", toggleSearchCheckboxBeforeBlur);
 
   function openSearchResultBeforeBlur(event) {
-    const detailsButton = event.target.closest("button[data-details-code]");
+    const detailsButton = event.target.closest("button[data-details-key]");
     if (
       !detailsButton ||
       elements.searchInput.value.length === 0 ||
@@ -723,28 +827,28 @@
     // result during the initial touch/mouse gesture and cancel the default
     // focus transfer so the numeric keyboard stays attached to the search.
     event.preventDefault();
-    const code = detailsButton.dataset.detailsCode;
-    directOpenedRow = { code, at: Date.now() };
+    const key = detailsButton.dataset.detailsKey;
+    directOpenedRow = { key, at: Date.now() };
     preserveSearchKeyboardOnNextDetail = true;
-    showProductDetail(code);
+    showProductDetail(key);
   }
 
   elements.codeList.addEventListener("touchstart", openSearchResultBeforeBlur, { passive: false });
   elements.codeList.addEventListener("mousedown", openSearchResultBeforeBlur);
 
   elements.codeList.addEventListener("click", (event) => {
-    const detailsButton = event.target.closest("button[data-details-code]");
+    const detailsButton = event.target.closest("button[data-details-key]");
     if (!detailsButton) {
       return;
     }
 
-    const code = detailsButton.dataset.detailsCode;
-    if (directOpenedRow?.code === code && Date.now() - directOpenedRow.at < 1200) {
+    const key = detailsButton.dataset.detailsKey;
+    if (directOpenedRow?.key === key && Date.now() - directOpenedRow.at < 1200) {
       return;
     }
 
     directOpenedRow = null;
-    showProductDetail(code);
+    showProductDetail(key);
   });
 
   for (const button of [elements.detailBackButton, elements.detailAction]) {
@@ -758,17 +862,17 @@
   elements.detailBackButton.addEventListener("click", returnToList);
 
   elements.detailAction.addEventListener("click", () => {
-    const product = findProduct(elements.detailAction.dataset.code);
+    const product = findProduct(elements.detailAction.dataset.productKey);
     if (!product) {
       return;
     }
-    setReviewed(product.code, !product.reviewed);
+    setReviewed(keyForProduct(product), !product.reviewed);
   });
 
   window.addEventListener("popstate", () => {
-    const code = productCodeFromHash();
-    if (code && findProduct(code)) {
-      showProductDetail(code, false);
+    const key = productKeyFromHash();
+    if (key && findProduct(key)) {
+      showProductDetail(key, false);
     } else {
       showVisitHome({ restoreFocus: true });
     }
@@ -780,8 +884,56 @@
       activeFilter = button.dataset.filter;
       renderFilters();
       renderChecklist();
+      syncSearchEnterButton();
     });
   }
+
+  elements.dayFilterButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const willOpen = elements.dayFilterMenu.hidden;
+    elements.dayFilterMenu.hidden = !willOpen;
+    elements.dayFilterButton.setAttribute("aria-expanded", String(willOpen));
+  });
+
+  elements.dayFilterMenu.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-day]");
+    if (!button) return;
+
+    activeDay = button.dataset.day;
+    resetSearchEnterSequence();
+    elements.dayFilterMenu.hidden = true;
+    elements.dayFilterButton.setAttribute("aria-expanded", "false");
+    renderDayMenu();
+    renderFilters();
+    renderChecklist();
+    syncSearchEnterButton();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (
+      !elements.dayFilterMenu.hidden &&
+      !elements.dayFilterMenu.contains(event.target) &&
+      event.target !== elements.dayFilterButton
+    ) {
+      elements.dayFilterMenu.hidden = true;
+      elements.dayFilterButton.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  elements.emojiTitleButton.addEventListener("click", () => {
+    const current = loadEmojiTitle();
+    const value = window.prompt("Elige de 1 a 3 emojis para el título:", current);
+    if (value === null) return;
+
+    const normalized = normalizeEmojiTitle(value);
+    if (!normalized) {
+      window.alert("Usa solamente de 1 a 3 emojis.");
+      return;
+    }
+
+    localStorage.setItem(TITLE_STORAGE_KEY, normalized);
+    renderEmojiTitle();
+  });
 
   elements.displayButton.addEventListener("click", showDisplayView);
   elements.displayBackButton.addEventListener("click", () => {
@@ -874,8 +1026,9 @@
     visit = null;
     displayItems = [];
     activeFilter = "all";
+    activeDay = "ALL";
     resetSearchEnterSequence();
-    selectedProductCode = null;
+    selectedProductKey = null;
     elements.searchInput.value = "";
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     setView();
@@ -884,6 +1037,7 @@
 
   window.addEventListener("pageshow", () => {
     if (visit?.products.length) {
+      renderDayMenu();
       renderFilters();
       if (!elements.checklistSection.hidden) {
         renderChecklist();
@@ -891,6 +1045,7 @@
     }
   });
 
+  renderEmojiTitle();
   elements.appVersion.textContent = `v${APP_VERSION}`;
   updateKeyboardInset();
   syncClearSearchButton();
