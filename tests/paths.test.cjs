@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.8\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.8\.1/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.8\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.8\.0"/);
+  assert.match(read("index.html"), /v1\.8\.1/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.8\.1"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -259,4 +259,12 @@ test("Enter mantiene CODE + DAY como filas independientes", () => {
   assert.match(app, /core\.createSelectionSequence\(filteredProducts\(\)\)/);
   assert.match(app, /core\.takeNextSelectionKey\(sequence\.queue\)/);
   assert.match(app, /searchEnterSequence\.day !== activeDay/);
+});
+
+
+test("los emojis quedan a la izquierda y los controles a la derecha", () => {
+  const html = read("index.html");
+  const header = html.match(/<header id="visit-header"[\s\S]*?<\/header>/)?.[0] ?? "";
+  assert.ok(header.indexOf('id="emoji-title-button"') >= 0);
+  assert.ok(header.indexOf('id="emoji-title-button"') < header.indexOf('class="visit-actions"'));
 });
