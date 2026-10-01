@@ -223,12 +223,55 @@
     return Math.max(safeNow, latest + 1);
   }
 
+  function createSelectionSequence(products) {
+    const codes = [];
+    const seen = new Set();
+
+    for (const item of Array.isArray(products) ? products : []) {
+      const code = typeof item === "string" ? item : item?.code;
+      if (typeof code !== "string" || !EXACT_CODE_PATTERN.test(code) || seen.has(code)) {
+        continue;
+      }
+      seen.add(code);
+      codes.push(code);
+    }
+
+    return { codes, nextIndex: 0 };
+  }
+
+  function takeNextSelectionCode(sequence) {
+    if (
+      !sequence ||
+      !Array.isArray(sequence.codes) ||
+      !Number.isInteger(sequence.nextIndex) ||
+      sequence.nextIndex < 0 ||
+      sequence.nextIndex >= sequence.codes.length
+    ) {
+      return null;
+    }
+
+    const code = sequence.codes[sequence.nextIndex];
+    sequence.nextIndex += 1;
+    return code;
+  }
+
+  function selectionSequenceComplete(sequence) {
+    return (
+      !sequence ||
+      !Array.isArray(sequence.codes) ||
+      sequence.nextIndex >= sequence.codes.length
+    );
+  }
+
   const api = Object.freeze({
     parseCodes,
     parseProducts,
     sanitizeCodeInput,
     normalizeStoredVisit,
     nextReviewedAt,
+    createSelectionSequence,
+    takeNextSelectionCode,
+    selectionSequenceComplete,
   });
 
   globalScope.OrderCheckCore = api;

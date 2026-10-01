@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.7.3";
+  const APP_VERSION = "1.7.4";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -59,6 +59,7 @@
   let directOpenedRow = null;
   let directToggledCheckbox = null;
   let directSubmittedSearchAt = 0;
+  let searchEnterSequence = null;
 
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
@@ -451,12 +452,42 @@
     elements.clearSearchButton.hidden = elements.searchInput.value.length === 0;
   }
 
+  function resetSearchEnterSequence() {
+    searchEnterSequence = null;
+  }
+
+  function getSearchEnterSequence() {
+    const query = elements.searchInput.value;
+    if (!query) {
+      return null;
+    }
+
+    if (
+      !searchEnterSequence ||
+      searchEnterSequence.query !== query ||
+      searchEnterSequence.filter !== activeFilter
+    ) {
+      searchEnterSequence = {
+        query,
+        filter: activeFilter,
+        queue: core.createSelectionSequence(filteredProducts()),
+      };
+    }
+
+    return searchEnterSequence;
+  }
+
+  function hasNextSearchEnterResult() {
+    const sequence = getSearchEnterSequence();
+    return Boolean(sequence && !core.selectionSequenceComplete(sequence.queue));
+  }
+
   function syncSearchEnterButton() {
     const searchFocused =
       document.activeElement === elements.searchInput &&
       !elements.searchCard.hidden;
     const hasQuery = elements.searchInput.value.length > 0;
-    const hasResult = hasQuery && filteredProducts().length > 0;
+    const hasResult = hasQuery && hasNextSearchEnterResult();
 
     elements.searchEnterButton.hidden = !searchFocused;
     elements.searchEnterButton.disabled = !hasResult;
@@ -474,22 +505,37 @@
     document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
   }
 
-  function submitFirstSearchResult() {
-    if (elements.searchInput.value.length === 0) {
+  function submitNextSearchResult() {
+    const sequence = getSearchEnterSequence();
+    if (!sequence) {
       return;
     }
 
-    const firstProduct = filteredProducts()[0];
-    if (!firstProduct) {
+    const code = core.takeNextSelectionCode(sequence.queue);
+    if (!code) {
+      syncSearchEnterButton();
       return;
     }
 
-    setReviewed(firstProduct.code, !firstProduct.reviewed);
-    clearSearch({ refocus: true });
+    const product = findProduct(code);
+    if (product) {
+      setReviewed(product.code, !product.reviewed);
+    }
+
+    if (core.selectionSequenceComplete(sequence.queue)) {
+      clearSearch({ refocus: true });
+      return;
+    }
+
+    // Keep the same search active between Enter presses so the next press
+    // selects the next row from the original top-to-bottom result order.
+    elements.searchInput.focus({ preventScroll: true });
+    syncSearchEnterButton();
   }
 
   function clearSearch({ refocus = false } = {}) {
     elements.searchInput.value = "";
+    resetSearchEnterSequence();
     syncClearSearchButton();
     renderSearchResult();
     if (refocus) {
@@ -531,6 +577,7 @@
     if (sanitized !== elements.searchInput.value) {
       elements.searchInput.value = sanitized;
     }
+    resetSearchEnterSequence();
     syncClearSearchButton();
     renderSearchResult();
     syncSearchEnterButton();
@@ -554,20 +601,32 @@
     if (event.key !== "Enter") {
       return;
     }
+    if (event.repeat) {
+      return;
+    }
     event.preventDefault();
-    submitFirstSearchResult();
+    submitNextSearchResult();
   });
 
   elements.clearSearchButton.addEventListener("click", clearSearchAndRefocus);
 
   function submitSearchFromFloatingButton(event) {
+    const now = Date.now();
+
+    // touchstart may be followed by synthetic mouse/click events. Ignore those
+    // follow-ups so one physical tap can never advance two rows.
+    if (event.type !== "touchstart" && now - directSubmittedSearchAt < 1200) {
+      event.preventDefault();
+      return;
+    }
+
     if (elements.searchEnterButton.disabled) {
       return;
     }
 
     event.preventDefault();
-    directSubmittedSearchAt = Date.now();
-    submitFirstSearchResult();
+    directSubmittedSearchAt = now;
+    submitNextSearchResult();
   }
 
   elements.searchEnterButton.addEventListener(
@@ -581,7 +640,7 @@
       event.preventDefault();
       return;
     }
-    submitFirstSearchResult();
+    submitNextSearchResult();
   });
 
   if (window.visualViewport) {
@@ -717,6 +776,7 @@
 
   for (const button of elements.filterButtons) {
     button.addEventListener("click", () => {
+      resetSearchEnterSequence();
       activeFilter = button.dataset.filter;
       renderFilters();
       renderChecklist();
@@ -814,6 +874,7 @@
     visit = null;
     displayItems = [];
     activeFilter = "all";
+    resetSearchEnterSequence();
     selectedProductCode = null;
     elements.searchInput.value = "";
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);

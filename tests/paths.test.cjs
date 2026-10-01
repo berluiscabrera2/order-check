@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.7\.3/);
+  assert.match(serviceWorker, /order-check-shell-v1\.7\.4/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.7\.3/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.7\.3"/);
+  assert.match(read("index.html"), /v1\.7\.4/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.7\.4"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -134,17 +134,21 @@ test("los cuatro dígitos del buscador quedan centrados incluso con la X", () =>
   assert.match(css, /\.search-input \{[\s\S]*?padding: 7px 58px;[\s\S]*?text-align: center;/);
 });
 
-test("el buscador tiene Enter flotante que marca el primer resultado y limpia la búsqueda", () => {
+test("Enter procesa resultados de arriba hacia abajo sin doble avance", () => {
   const html = read("index.html");
   const app = read("app.js");
   const css = read("styles.css");
   assert.match(html, /id="search-enter-button"/);
   assert.match(html, /enterkeyhint="go"/);
-  assert.match(app, /function submitFirstSearchResult\(\)/);
-  assert.match(app, /const firstProduct = filteredProducts\(\)\[0\]/);
-  assert.match(app, /setReviewed\(firstProduct\.code, !firstProduct\.reviewed\)/);
+  assert.match(app, /function getSearchEnterSequence\(\)/);
+  assert.match(app, /core\.createSelectionSequence\(filteredProducts\(\)\)/);
+  assert.match(app, /function submitNextSearchResult\(\)/);
+  assert.match(app, /core\.takeNextSelectionCode\(sequence\.queue\)/);
+  assert.match(app, /setReviewed\(product\.code, !product\.reviewed\)/);
+  assert.match(app, /core\.selectionSequenceComplete\(sequence\.queue\)/);
   assert.match(app, /clearSearch\(\{ refocus: true \}\)/);
-  assert.match(app, /searchEnterButton\.addEventListener/);
+  assert.match(app, /event\.type !== "touchstart"[\s\S]*?directSubmittedSearchAt < 1200/);
+  assert.match(app, /event\.repeat/);
   assert.match(app, /visualViewport\.addEventListener\("resize", updateKeyboardInset\)/);
   assert.match(css, /\.search-enter-button \{[\s\S]*?position: fixed;[\s\S]*?right:/);
   assert.match(css, /background: var\(--blue\)/);

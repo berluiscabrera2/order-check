@@ -8,6 +8,9 @@ const {
   sanitizeCodeInput,
   normalizeStoredVisit,
   nextReviewedAt,
+  createSelectionSequence,
+  takeNextSelectionCode,
+  selectionSequenceComplete,
 } = require("../core.js");
 
 test("parsea el formato completo y conserva todos los valores como strings", () => {
@@ -184,4 +187,34 @@ test("reviewedAt siempre aumenta aunque dos selecciones ocurran en el mismo mili
   assert.equal(nextReviewedAt(products, 1000), 1001);
   assert.equal(nextReviewedAt(products, 999), 1001);
   assert.equal(nextReviewedAt(products, 2000), 2000);
+});
+
+
+test("la secuencia de Enter conserva exactamente el orden visible de arriba hacia abajo", () => {
+  const sequence = createSelectionSequence([
+    { code: "2419" },
+    { code: "2423" },
+    { code: "2465" },
+  ]);
+
+  assert.equal(selectionSequenceComplete(sequence), false);
+  assert.equal(takeNextSelectionCode(sequence), "2419");
+  assert.equal(takeNextSelectionCode(sequence), "2423");
+  assert.equal(takeNextSelectionCode(sequence), "2465");
+  assert.equal(selectionSequenceComplete(sequence), true);
+  assert.equal(takeNextSelectionCode(sequence), null);
+});
+
+test("la secuencia de Enter elimina duplicados sin saltarse códigos válidos", () => {
+  const sequence = createSelectionSequence([
+    { code: "0500" },
+    { code: "0500" },
+    { code: "0743" },
+    { code: "12345" },
+  ]);
+
+  assert.deepEqual(sequence.codes, ["0500", "0743"]);
+  assert.equal(takeNextSelectionCode(sequence), "0500");
+  assert.equal(takeNextSelectionCode(sequence), "0743");
+  assert.equal(takeNextSelectionCode(sequence), null);
 });
