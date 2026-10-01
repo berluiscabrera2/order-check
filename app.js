@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.7.0";
+  const APP_VERSION = "1.7.1";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -449,11 +449,17 @@
     elements.clearSearchButton.hidden = elements.searchInput.value.length === 0;
   }
 
-  function clearSearchAndRefocus() {
+  function clearSearch({ refocus = false } = {}) {
     elements.searchInput.value = "";
     syncClearSearchButton();
     renderSearchResult();
-    elements.searchInput.focus({ preventScroll: true });
+    if (refocus) {
+      elements.searchInput.focus({ preventScroll: true });
+    }
+  }
+
+  function clearSearchAndRefocus() {
+    clearSearch({ refocus: true });
   }
 
   function syncScrollTopButton() {
@@ -512,7 +518,11 @@
       return;
     }
 
+    const hadSearch = elements.searchInput.value.length > 0;
     setReviewed(code, checkbox.checked);
+    if (hadSearch) {
+      clearSearch();
+    }
   });
 
   function toggleSearchCheckboxBeforeBlur(event) {
@@ -538,7 +548,7 @@
 
     directToggledCheckbox = { code, at: Date.now() };
     setReviewed(code, !product.reviewed);
-    elements.searchInput.focus({ preventScroll: true });
+    clearSearch({ refocus: true });
   }
 
   elements.codeList.addEventListener("touchstart", toggleSearchCheckboxBeforeBlur, { passive: false });
