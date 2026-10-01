@@ -34,7 +34,7 @@ test("service worker limita su caché y scope a /order-check/", () => {
 
 test("la interfaz y el código publican la misma versión", () => {
   assert.match(read("index.html"), /v1\.3\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.2\.0"/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.3\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
