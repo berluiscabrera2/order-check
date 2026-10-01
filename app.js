@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.3.1";
+  const APP_VERSION = "1.4.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -173,6 +173,11 @@
   }
 
   function filteredProducts() {
+    const searchQuery = elements.searchInput?.value ?? "";
+    if (searchQuery.length > 0) {
+      return visit.products.filter((product) => product.code.startsWith(searchQuery));
+    }
+
     if (activeFilter === "pending") {
       return visit.products.filter((product) => !product.reviewed);
     }
@@ -308,6 +313,10 @@
     }
 
     elements.codeList.replaceChildren(fragment);
+    const hasSearch = elements.searchInput.value.length > 0;
+    elements.emptyFilterMessage.textContent = hasSearch
+      ? "No hay códigos que coincidan."
+      : "No hay códigos en este filtro.";
     elements.emptyFilterMessage.hidden = products.length > 0;
   }
 
@@ -318,40 +327,11 @@
       return;
     }
 
-    const code = elements.searchInput.value;
-    const complete = code.length === 4;
-    elements.checklistSection.hidden = code.length > 0;
-    elements.searchResult.hidden = !complete;
-
-    if (!complete) {
-      elements.searchResult.className = "search-result";
-      elements.resultDetails.hidden = true;
-      return;
-    }
-
-    const product = findProduct(code);
-    if (!product) {
-      elements.searchResult.className = "search-result is-no";
-      elements.resultTitle.textContent = "✕ CGO NO";
-      elements.resultMessage.textContent = "Revisar para agregar al pedido.";
-      elements.resultDetails.hidden = true;
-      elements.resultReviewedNote.hidden = true;
-      elements.resultAction.hidden = true;
-      return;
-    }
-
-    elements.searchResult.className = "search-result is-yes";
-    elements.resultTitle.textContent = "✓ CGO SÍ";
-    elements.resultMessage.textContent = "Ya está siendo pedido.";
-    elements.resultDetails.hidden = false;
-    elements.resultInv.textContent = product.inv;
-    elements.resultCgoQty.textContent = product.cgoQty;
-    elements.resultReviewedNote.hidden = !product.reviewed;
-    elements.resultReviewedNote.textContent = "Este código ya estaba marcado como revisado.";
-    elements.resultAction.hidden = false;
-    elements.resultAction.classList.toggle("is-unmark", product.reviewed);
-    elements.resultAction.textContent = product.reviewed ? "↶ Desmarcar" : "✓ Marcar como revisado";
-    elements.resultAction.dataset.code = code;
+    // Search now filters the normal product rows from the first digit onward.
+    // Details only open after the user taps a row, exactly like in "Todos".
+    elements.searchResult.hidden = true;
+    elements.checklistSection.hidden = false;
+    renderChecklist();
   }
 
   function setReviewed(code, shouldReview) {
