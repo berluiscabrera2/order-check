@@ -388,14 +388,13 @@ textarea:focus,
 }
 
 .checklist-section {
-  margin-top: 26px;
+  margin-top: 12px;
 }
 
 .checklist-heading {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-bottom: 13px;
+  margin-bottom: 9px;
 }
 
 .filters {
