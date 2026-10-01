@@ -86,6 +86,7 @@ test("al activar elimina solo cachés antiguas de Order Check", async () => {
   const { listeners, deletedCaches } = createWorker(new Map(), [
     "order-check-shell-v1.8.1",
     "order-check-shell-v1.9.0",
+    "order-check-shell-v1.9.1",
     "another-project-shell-v4",
   ]);
   let activationPromise;
@@ -97,5 +98,5 @@ test("al activar elimina solo cachés antiguas de Order Check", async () => {
   });
   await activationPromise;
 
-  assert.deepEqual(deletedCaches, ["order-check-shell-v1.8.1"]);
+  assert.deepEqual(deletedCaches, ["order-check-shell-v1.8.1", "order-check-shell-v1.9.0"]);
 });

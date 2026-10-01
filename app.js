@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.9.0";
+  const APP_VERSION = "1.9.1";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const TITLE_STORAGE_KEY = "order-check.title-emojis.v1";
@@ -25,14 +25,6 @@
     searchInput: document.querySelector("#search-input"),
     clearSearchButton: document.querySelector("#clear-search-button"),
     searchEnterButton: document.querySelector("#search-enter-button"),
-    searchResult: document.querySelector("#search-result"),
-    resultTitle: document.querySelector("#result-title"),
-    resultMessage: document.querySelector("#result-message"),
-    resultDetails: document.querySelector("#result-details"),
-    resultInv: document.querySelector("#result-inv"),
-    resultCgoQty: document.querySelector("#result-cgo-qty"),
-    resultReviewedNote: document.querySelector("#result-reviewed-note"),
-    resultAction: document.querySelector("#result-action"),
     checklistSection: document.querySelector("#checklist-section"),
     codeList: document.querySelector("#code-list"),
     emptyFilterMessage: document.querySelector("#empty-filter-message"),
@@ -445,59 +437,14 @@
     elements.emptyFilterMessage.hidden = products.length > 0;
   }
 
-  function renderSearchResult() {
-    // While a searched product detail is open, keep the list hidden so the
-    // focused search field can remain on screen without mixing both views.
+  function renderSearchList() {
     if (selectedProductKey) {
-      elements.searchResult.hidden = true;
       elements.checklistSection.hidden = true;
       return;
     }
 
     elements.checklistSection.hidden = false;
     renderChecklist();
-
-    const query = elements.searchInput.value;
-    if (query.length !== 4) {
-      elements.searchResult.hidden = true;
-      return;
-    }
-
-    const exactMatches = productsForActiveDay().filter((product) => product.code === query);
-    elements.searchResult.hidden = false;
-    elements.resultAction.hidden = true;
-    elements.resultAction.removeAttribute("data-product-key");
-    elements.resultReviewedNote.hidden = true;
-    elements.resultDetails.hidden = true;
-
-    if (exactMatches.length === 0) {
-      elements.searchResult.className = "search-result is-no";
-      elements.resultTitle.textContent = "🔴 CGO NO";
-      elements.resultMessage.textContent = "Revisar para agregar al pedido.";
-      return;
-    }
-
-    elements.searchResult.className = "search-result is-yes";
-    elements.resultTitle.textContent = "🟢 CGO SÍ";
-
-    if (exactMatches.length > 1) {
-      elements.resultMessage.textContent = `Encontrado en ${exactMatches.length} días. Selecciona la fila correspondiente.`;
-      return;
-    }
-
-    const product = exactMatches[0];
-    elements.resultMessage.textContent = "Ya está siendo pedido.";
-    elements.resultInv.textContent = product.inv;
-    elements.resultCgoQty.textContent = product.cgoQty;
-    elements.resultDetails.hidden = false;
-    elements.resultReviewedNote.hidden = !product.reviewed;
-    elements.resultReviewedNote.textContent = "Este producto ya está revisado.";
-    elements.resultAction.hidden = false;
-    elements.resultAction.dataset.productKey = keyForProduct(product);
-    elements.resultAction.classList.toggle("is-unmark", product.reviewed);
-    elements.resultAction.textContent = product.reviewed
-      ? "↶ Desmarcar"
-      : "✓ Marcar como revisado";
   }
 
   function setReviewed(key, shouldReview) {
@@ -583,7 +530,7 @@
     renderDayMenu();
     renderSortMenu();
     renderFilters();
-    renderSearchResult();
+    renderSearchList();
 
     if (restoreFocus && elements.searchInput.value.length > 0) {
       elements.searchInput.focus({ preventScroll: true });
@@ -601,7 +548,6 @@
     elements.visitHeader.hidden = true;
     elements.searchCard.hidden = true;
     elements.checklistSection.hidden = true;
-    elements.searchResult.hidden = true;
     elements.displaySection.hidden = false;
     renderDisplayList();
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -709,7 +655,7 @@
     elements.searchInput.value = "";
     resetSearchEnterSequence();
     syncClearSearchButton();
-    renderSearchResult();
+    renderSearchList();
     renderSortMenu();
     if (refocus) {
       elements.searchInput.focus({ preventScroll: true });
@@ -755,7 +701,7 @@
     }
     resetSearchEnterSequence();
     syncClearSearchButton();
-    renderSearchResult();
+    renderSearchList();
     renderSortMenu();
     syncSearchEnterButton();
   });
@@ -824,14 +770,6 @@
     window.visualViewport.addEventListener("resize", updateKeyboardInset);
     window.visualViewport.addEventListener("scroll", updateKeyboardInset);
   }
-
-  elements.resultAction.addEventListener("click", () => {
-    const key = elements.resultAction.dataset.productKey;
-    const product = findProduct(key);
-    if (!product) return;
-    setReviewed(key, !product.reviewed);
-    clearSearchAndRefocus();
-  });
 
   elements.codeList.addEventListener("change", (event) => {
     const checkbox = event.target.closest("input[data-product-key]");
@@ -979,7 +917,7 @@
     elements.dayFilterButton.setAttribute("aria-expanded", "false");
     renderDayMenu();
     renderFilters();
-    renderSearchResult();
+    renderSearchList();
     syncSearchEnterButton();
   });
 

@@ -30,12 +30,12 @@ test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
   assert.match(serviceWorker, /order-check-shell-/);
-  assert.match(serviceWorker, /v1\.9\.0/);
+  assert.match(serviceWorker, /v1\.9\.1/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.9\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.9\.0"/);
+  assert.match(read("index.html"), /v1\.9\.1/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.9\.1"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -49,11 +49,11 @@ test("las filas ofrecen navegación accesible a detalles y regreso a la lista", 
   assert.match(app, /addEventListener\("popstate"/);
 });
 
-test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por código", () => {
+test("los detalles incluyen metadatos INV y CGO QTY sin cambiar la búsqueda por código", () => {
   const html = read("index.html");
   const app = read("app.js");
-  assert.match(html, /id="result-inv"/);
-  assert.match(html, /id="result-cgo-qty"/);
+  assert.match(html, /id="detail-inv"/);
+  assert.match(html, /id="detail-cgo-qty"/);
   assert.match(app, /findProduct\(key\)/);
   assert.match(app, /keyForProduct\(product\) === key/);
 });
@@ -82,13 +82,17 @@ test("Display permite cualquier código válido de 4 dígitos aunque no esté en
   assert.doesNotMatch(app, /Ese código no está en la lista CGO actual/);
 });
 
-test("la búsqueda filtra desde el primer dígito y muestra CGO SÍ o NO con cuatro dígitos", () => {
+test("la búsqueda filtra las filas y reserva CGO, INV y QTY para los detalles", () => {
+  const html = read("index.html");
   const app = read("app.js");
   assert.match(read("core.js"), /product\?\.code\?\.startsWith\(searchQuery\)/);
-  assert.match(app, /query\.length !== 4/);
-  assert.match(app, /🔴 CGO NO/);
-  assert.match(app, /🟢 CGO SÍ/);
+  assert.doesNotMatch(html, /id="search-result"/);
+  assert.doesNotMatch(app, /resultAction|resultTitle|resultMessage/);
+  assert.match(app, /function renderSearchList\(\)/);
   assert.match(app, /showProductDetail\(key\)/);
+  assert.match(html, /id="product-detail-view"/);
+  assert.match(html, /id="detail-inv"/);
+  assert.match(html, /id="detail-cgo-qty"/);
 });
 
 test("los filtros muestran cantidades dinámicas desde la carga inicial", () => {
