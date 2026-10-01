@@ -55,7 +55,6 @@
           <div>
             <h1 id="visit-title">Order Check</h1>
             <p id="progress-text" class="progress-text" aria-live="polite">0 de 0 revisados</p>
-            <p id="loaded-count" class="loaded-count">0 códigos cargados</p>
           </div>
           <div class="visit-actions">
             <button id="display-button" class="button button--quiet" type="button">Display</button>
@@ -71,23 +70,33 @@
           </div>
         </header>
 
-        <section id="search-card" class="search-card" aria-labelledby="search-label">
-          <label id="search-label" for="search-input">Buscar código</label>
-          <input
-            id="search-input"
-            class="search-input"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            maxlength="4"
-            enterkeyhint="done"
-            autocomplete="off"
-            autocorrect="off"
-            spellcheck="false"
-            placeholder="0000"
-            aria-describedby="search-help"
-          />
-          <p id="search-help" class="search-help">Escribe 1–4 dígitos. Toca un resultado para ver sus detalles.</p>
+        <section id="search-card" class="search-card" aria-label="Buscar código">
+          <div class="search-input-wrap">
+            <input
+              id="search-input"
+              class="search-input"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="4"
+              enterkeyhint="done"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+              placeholder="0000"
+              aria-label="Buscar código"
+            />
+            <button
+              id="clear-search-button"
+              class="search-clear-button"
+              type="button"
+              aria-label="Borrar búsqueda"
+              title="Borrar búsqueda"
+              hidden
+            >
+              ×
+            </button>
+          </div>
 
           <div id="search-result" class="search-result" role="status" aria-live="polite" hidden>
             <p id="result-title" class="result-title"></p>
@@ -196,8 +205,19 @@
       </section>
     </main>
 
+    <button
+      id="scroll-top-button"
+      class="scroll-top-button"
+      type="button"
+      aria-label="Volver arriba"
+      title="Volver arriba"
+      hidden
+    >
+      ↑
+    </button>
+
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.5.0</span>
+      <span id="app-version">v1.6.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>

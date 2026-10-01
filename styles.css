@@ -154,10 +154,6 @@ textarea:focus,
 }
 
 .field-help,
-.search-help,
-.loaded-count {
-  color: var(--muted);
-}
 
 .field-help {
   margin: 9px 0 0;
@@ -189,6 +185,8 @@ textarea:focus,
 }
 
 .button:focus-visible,
+.search-clear-button:focus-visible,
+.scroll-top-button:focus-visible,
 .filter-button:focus-visible,
 .code-details-button:focus-visible,
 .code-check-control:focus-within,
@@ -218,18 +216,13 @@ textarea:focus,
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .progress-text {
   margin: 7px 0 1px;
   font-size: 1.1rem;
   font-weight: 800;
-}
-
-.loaded-count {
-  margin: 0;
-  font-size: 0.85rem;
 }
 
 .button--quiet {
@@ -267,19 +260,19 @@ textarea:focus,
 .search-card {
   position: relative;
   z-index: 2;
-  padding: 18px;
+  padding: 10px;
 }
 
-.search-card label {
-  font-size: 1rem;
+.search-input-wrap {
+  position: relative;
 }
 
 .search-input {
   width: 100%;
-  height: 76px;
+  height: 72px;
   border: 3px solid #94a3b8;
   border-radius: 16px;
-  padding: 7px 14px;
+  padding: 7px 58px 7px 14px;
   background: #ffffff;
   color: var(--navy);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -295,10 +288,29 @@ textarea:focus,
   opacity: 1;
 }
 
-.search-help {
-  margin: 9px 0 0;
-  text-align: center;
-  font-size: 0.88rem;
+.search-clear-button {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  transform: translateY(-50%);
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: #eef2f7;
+  color: #526176;
+  font-size: 1.65rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.search-clear-button:active {
+  background: #e2e8f0;
 }
 
 .search-result {
@@ -386,7 +398,7 @@ textarea:focus,
 }
 
 .checklist-section {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .checklist-heading {
@@ -715,6 +727,29 @@ textarea:focus,
   overflow-wrap: anywhere;
   color: var(--navy);
   font-size: 1.35rem;
+}
+
+.scroll-top-button {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+  z-index: 20;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid #d6dee8;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--navy);
+  font-size: 1.5rem;
+  font-weight: 850;
+  box-shadow: 0 10px 28px rgb(15 23 42 / 20%);
+  cursor: pointer;
+}
+
+.scroll-top-button:active {
+  transform: translateY(1px);
 }
 
 .app-footer {

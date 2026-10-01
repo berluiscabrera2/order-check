@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.5\.0/);
+  assert.match(serviceWorker, /order-check-shell-v1\.6\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.5\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.5\.0"/);
+  assert.match(read("index.html"), /v1\.6\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.6\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -57,10 +57,10 @@ test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por c
   assert.match(app, /product\.code === code/);
 });
 
-test("las listas de productos se ordenan por código de menor a mayor", () => {
+test("Todos y Pendientes se ordenan por código; Revisados conserva los más recientes arriba", () => {
   const app = read("app.js");
   assert.match(app, /Number\(a\.code\) - Number\(b\.code\)/);
-  assert.match(app, /return products\.sort/);
+  assert.match(app, /activeFilter === "reviewed"[\s\S]*?b\.reviewedAt \?\? 0/);
   assert.match(app, /const items = \[\.\.\.displayItems\]\.sort/);
 });
 
@@ -115,9 +115,22 @@ test("la búsqueda respeta Todos, Pendientes y Revisados", () => {
   assert.match(app, /products = products\.filter\(\(product\) => product\.code\.startsWith\(searchQuery\)\)/);
 });
 
-test("la lista principal ya no muestra el título Lista CGO", () => {
+test("la lista principal ya no muestra títulos innecesarios alrededor del buscador", () => {
   const html = read("index.html");
   assert.doesNotMatch(html, /<h2 id="checklist-title">Lista CGO<\/h2>/);
+  assert.doesNotMatch(html, /id="loaded-count"/);
+  assert.doesNotMatch(html, />Buscar código<\/label>/);
+  assert.doesNotMatch(html, /Escribe 1–4 dígitos/);
+});
+
+test("el buscador tiene botón X para limpiar y botón flotante para volver arriba", () => {
+  const html = read("index.html");
+  const app = read("app.js");
+  assert.match(html, /id="clear-search-button"/);
+  assert.match(html, /id="scroll-top-button"/);
+  assert.match(app, /clearSearchButton\.addEventListener\("click", clearSearchAndRefocus\)/);
+  assert.match(app, /window\.addEventListener\("scroll", syncScrollTopButton/);
+  assert.match(app, /window\.scrollTo\(\{ top: 0/);
 });
 
 test("la lista de prueba no está precargada en producción", () => {

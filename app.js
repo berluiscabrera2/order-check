@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.5.0";
+  const APP_VERSION = "1.6.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -13,11 +13,11 @@
     codesInput: document.querySelector("#codes-input"),
     setupMessage: document.querySelector("#setup-message"),
     progressText: document.querySelector("#progress-text"),
-    loadedCount: document.querySelector("#loaded-count"),
     visitHeader: document.querySelector("#visit-header"),
     displayButton: document.querySelector("#display-button"),
     searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
+    clearSearchButton: document.querySelector("#clear-search-button"),
     searchResult: document.querySelector("#search-result"),
     resultTitle: document.querySelector("#result-title"),
     resultMessage: document.querySelector("#result-message"),
@@ -47,6 +47,7 @@
     detailAction: document.querySelector("#detail-action"),
     filterButtons: [...document.querySelectorAll("[data-filter]")],
     newVisitButton: document.querySelector("#new-visit-button"),
+    scrollTopButton: document.querySelector("#scroll-top-button"),
     appVersion: document.querySelector("#app-version"),
   };
 
@@ -150,7 +151,6 @@
     const reviewed = visit.products.filter((product) => product.reviewed).length;
     const total = visit.products.length;
     elements.progressText.textContent = `${reviewed} de ${total} revisados`;
-    elements.loadedCount.textContent = `${total} ${total === 1 ? "código cargado" : "códigos cargados"}`;
   }
 
   function renderFilters() {
@@ -188,6 +188,10 @@
     const searchQuery = elements.searchInput?.value ?? "";
     if (searchQuery.length > 0) {
       products = products.filter((product) => product.code.startsWith(searchQuery));
+    }
+
+    if (activeFilter === "reviewed") {
+      return products.sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0));
     }
 
     return products.sort((a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code));
@@ -426,10 +430,19 @@
     showVisitHome({ restoreFocus: true });
   }
 
+  function syncClearSearchButton() {
+    elements.clearSearchButton.hidden = elements.searchInput.value.length === 0;
+  }
+
   function clearSearchAndRefocus() {
     elements.searchInput.value = "";
+    syncClearSearchButton();
     renderSearchResult();
     elements.searchInput.focus({ preventScroll: true });
+  }
+
+  function syncScrollTopButton() {
+    elements.scrollTopButton.hidden = window.scrollY < 420;
   }
 
   elements.setupForm.addEventListener("submit", (event) => {
@@ -456,8 +469,11 @@
     if (sanitized !== elements.searchInput.value) {
       elements.searchInput.value = sanitized;
     }
+    syncClearSearchButton();
     renderSearchResult();
   });
+
+  elements.clearSearchButton.addEventListener("click", clearSearchAndRefocus);
 
   elements.resultAction.addEventListener("click", () => {
     const code = elements.resultAction.dataset.code;
@@ -584,6 +600,12 @@
     elements.displayMessage.textContent = `${code} eliminado de Display.`;
   });
 
+  window.addEventListener("scroll", syncScrollTopButton, { passive: true });
+  elements.scrollTopButton.addEventListener("click", () => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  });
+
   elements.newVisitButton.addEventListener("click", () => {
     const confirmed = window.confirm(
       "¿Iniciar una nueva visita? Se borrará la lista CGO actual y todos los checks.",
@@ -605,6 +627,8 @@
   });
 
   elements.appVersion.textContent = `v${APP_VERSION}`;
+  syncClearSearchButton();
+  syncScrollTopButton();
   setView();
 
   if ("serviceWorker" in navigator) {
