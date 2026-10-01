@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.4.1";
+  const APP_VERSION = "1.5.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -15,8 +15,7 @@
     progressText: document.querySelector("#progress-text"),
     loadedCount: document.querySelector("#loaded-count"),
     visitHeader: document.querySelector("#visit-header"),
-    appTabs: document.querySelector("#app-tabs"),
-    tabButtons: [...document.querySelectorAll("[data-app-tab]")],
+    displayButton: document.querySelector("#display-button"),
     searchCard: document.querySelector("#search-card"),
     searchInput: document.querySelector("#search-input"),
     searchResult: document.querySelector("#search-result"),
@@ -31,6 +30,7 @@
     codeList: document.querySelector("#code-list"),
     emptyFilterMessage: document.querySelector("#empty-filter-message"),
     displaySection: document.querySelector("#display-section"),
+    displayBackButton: document.querySelector("#display-back-button"),
     displayForm: document.querySelector("#display-form"),
     displayCodeInput: document.querySelector("#display-code-input"),
     displayQuantityInput: document.querySelector("#display-quantity-input"),
@@ -53,7 +53,6 @@
   let visit = loadVisit();
   let displayItems = visit ? loadDisplayItems() : [];
   let activeFilter = "all";
-  let activeTab = "cgo";
   let selectedProductCode = productCodeFromHash();
 
   if (!visit) {
@@ -134,7 +133,6 @@
 
   function renderVisit() {
     renderProgress();
-    renderTabs();
     renderFilters();
     renderChecklist();
     renderDisplayList();
@@ -155,20 +153,24 @@
     elements.loadedCount.textContent = `${total} ${total === 1 ? "código cargado" : "códigos cargados"}`;
   }
 
-  function renderTabs() {
-    for (const button of elements.tabButtons) {
-      const selected = button.dataset.appTab === activeTab;
-      button.classList.toggle("is-active", selected);
-      button.setAttribute("aria-selected", String(selected));
-      button.setAttribute("tabindex", selected ? "0" : "-1");
-    }
-  }
-
   function renderFilters() {
+    const counts = {
+      all: visit.products.length,
+      pending: visit.products.filter((product) => !product.reviewed).length,
+      reviewed: visit.products.filter((product) => product.reviewed).length,
+    };
+    const labels = {
+      all: "Todos",
+      pending: "Pendientes",
+      reviewed: "Revisados",
+    };
+
     for (const button of elements.filterButtons) {
-      const selected = button.dataset.filter === activeFilter;
+      const filter = button.dataset.filter;
+      const selected = filter === activeFilter;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
+      button.textContent = `${labels[filter]} (${counts[filter]})`;
     }
   }
 
@@ -178,12 +180,9 @@
     if (activeFilter === "pending") {
       products = visit.products.filter((product) => !product.reviewed);
     } else if (activeFilter === "reviewed") {
-      products = visit.products
-        .filter((product) => product.reviewed)
-        .slice()
-        .sort((a, b) => (b.reviewedAt ?? 0) - (a.reviewedAt ?? 0));
+      products = visit.products.filter((product) => product.reviewed);
     } else {
-      products = visit.products;
+      products = [...visit.products];
     }
 
     const searchQuery = elements.searchInput?.value ?? "";
@@ -191,7 +190,7 @@
       products = products.filter((product) => product.code.startsWith(searchQuery));
     }
 
-    return products;
+    return products.sort((a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code));
   }
 
   function createMetaItem(label, value) {
@@ -205,7 +204,9 @@
   }
 
   function renderDisplayList() {
-    const items = [...displayItems].sort((a, b) => b.addedAt - a.addedAt);
+    const items = [...displayItems].sort(
+      (a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code),
+    );
     const fragment = document.createDocumentFragment();
 
     for (const item of items) {
@@ -325,13 +326,7 @@
   }
 
   function renderSearchResult() {
-    if (activeTab !== "cgo") {
-      elements.searchResult.hidden = true;
-      elements.checklistSection.hidden = true;
-      return;
-    }
-
-    // Search now filters the normal product rows from the first digit onward.
+    // Search filters the normal product rows from the first digit onward.
     // Details only open after the user taps a row, exactly like in "Todos".
     elements.searchResult.hidden = true;
     elements.checklistSection.hidden = false;
@@ -351,6 +346,7 @@
     }
     saveVisit();
     renderProgress();
+    renderFilters();
     renderChecklist();
     if (selectedProductCode === code) {
       renderProductDetail(product);
@@ -378,7 +374,6 @@
     lastOpenedProductCode = code;
     renderProductDetail(product);
     elements.visitHeader.hidden = true;
-    elements.appTabs.hidden = true;
     elements.searchCard.hidden = true;
     elements.checklistSection.hidden = true;
     elements.displaySection.hidden = true;
@@ -395,25 +390,30 @@
   function showVisitHome({ restoreFocus = false } = {}) {
     selectedProductCode = null;
     elements.productDetailView.hidden = true;
+    elements.displaySection.hidden = true;
     elements.visitHeader.hidden = false;
-    elements.appTabs.hidden = false;
-    renderTabs();
+    elements.searchCard.hidden = false;
+    elements.checklistSection.hidden = false;
+    renderFilters();
+    renderSearchResult();
 
-    const showingCgo = activeTab === "cgo";
-    elements.searchCard.hidden = !showingCgo;
-    elements.displaySection.hidden = showingCgo;
-    if (showingCgo) {
-      renderSearchResult();
-    } else {
-      elements.checklistSection.hidden = true;
-      elements.searchResult.hidden = true;
-      renderDisplayList();
-    }
-
-    if (restoreFocus && showingCgo && lastOpenedProductCode) {
+    if (restoreFocus && lastOpenedProductCode) {
       const rowButton = elements.codeList.querySelector(`[data-details-code="${lastOpenedProductCode}"]`);
       rowButton?.focus({ preventScroll: true });
     }
+  }
+
+  function showDisplayView() {
+    selectedProductCode = null;
+    elements.productDetailView.hidden = true;
+    elements.visitHeader.hidden = true;
+    elements.searchCard.hidden = true;
+    elements.checklistSection.hidden = true;
+    elements.searchResult.hidden = true;
+    elements.displaySection.hidden = false;
+    renderDisplayList();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    elements.displayBackButton.focus({ preventScroll: true });
   }
 
   function returnToList() {
@@ -445,7 +445,6 @@
     displayItems = [];
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
     activeFilter = "all";
-    activeTab = "cgo";
     saveVisit();
     elements.searchInput.value = "";
     setView();
@@ -513,13 +512,11 @@
     });
   }
 
-  for (const button of elements.tabButtons) {
-    button.addEventListener("click", () => {
-      activeTab = button.dataset.appTab;
-      showVisitHome();
-      (activeTab === "display" ? elements.displayCodeInput : elements.searchInput).focus({ preventScroll: true });
-    });
-  }
+  elements.displayButton.addEventListener("click", showDisplayView);
+  elements.displayBackButton.addEventListener("click", () => {
+    showVisitHome();
+    elements.displayButton.focus({ preventScroll: true });
+  });
 
   elements.displayForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -600,7 +597,6 @@
     visit = null;
     displayItems = [];
     activeFilter = "all";
-    activeTab = "cgo";
     selectedProductCode = null;
     elements.searchInput.value = "";
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);

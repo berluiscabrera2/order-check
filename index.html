@@ -57,13 +57,19 @@
             <p id="progress-text" class="progress-text" aria-live="polite">0 de 0 revisados</p>
             <p id="loaded-count" class="loaded-count">0 códigos cargados</p>
           </div>
-          <button id="new-visit-button" class="button button--quiet" type="button">Nueva visita</button>
+          <div class="visit-actions">
+            <button id="display-button" class="button button--quiet" type="button">Display</button>
+            <button
+              id="new-visit-button"
+              class="button button--new-visit"
+              type="button"
+              aria-label="Nueva visita"
+              title="Nueva visita"
+            >
+              +
+            </button>
+          </div>
         </header>
-
-        <nav id="app-tabs" class="app-tabs" role="tablist" aria-label="Secciones de la visita">
-          <button class="app-tab is-active" type="button" role="tab" data-app-tab="cgo" aria-selected="true">CGO</button>
-          <button class="app-tab" type="button" role="tab" data-app-tab="display" aria-selected="false" tabindex="-1">Display</button>
-        </nav>
 
         <section id="search-card" class="search-card" aria-labelledby="search-label">
           <label id="search-label" for="search-input">Buscar código</label>
@@ -105,13 +111,13 @@
           <div class="checklist-heading">
             <div class="filters" role="group" aria-label="Filtrar lista CGO">
               <button class="filter-button is-active" type="button" data-filter="all" aria-pressed="true">
-                Todos
+                Todos (0)
               </button>
               <button class="filter-button" type="button" data-filter="pending" aria-pressed="false">
-                Pendientes
+                Pendientes (0)
               </button>
               <button class="filter-button" type="button" data-filter="reviewed" aria-pressed="false">
-                Revisados
+                Revisados (0)
               </button>
             </div>
           </div>
@@ -121,6 +127,10 @@
         </section>
 
         <section id="display-section" class="display-section" aria-labelledby="display-title" hidden>
+          <button id="display-back-button" class="button button--back display-back-button" type="button">
+            <span aria-hidden="true">←</span>
+            Volver
+          </button>
           <article class="display-card">
             <div class="display-heading">
               <div>
@@ -187,7 +197,7 @@
     </main>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.4.1</span>
+      <span id="app-version">v1.5.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>

@@ -190,7 +190,6 @@ textarea:focus,
 
 .button:focus-visible,
 .filter-button:focus-visible,
-.app-tab:focus-visible,
 .code-details-button:focus-visible,
 .code-check-control:focus-within,
 .display-code-input:focus,
@@ -242,28 +241,27 @@ textarea:focus,
   font-size: 0.88rem;
 }
 
-.app-tabs {
+.visit-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.button--new-visit {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  margin-bottom: 14px;
-  border-radius: 14px;
-  padding: 4px;
-  background: #e2e8f0;
-}
-.app-tab {
-  min-height: 46px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  color: #526176;
-  font-weight: 850;
-  cursor: pointer;
-}
-.app-tab.is-active {
+  width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 0;
   background: #ffffff;
   color: var(--navy);
-  box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
+  font-size: 1.65rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .search-card {
@@ -570,6 +568,7 @@ textarea:focus,
 }
 
 .display-section { display: grid; gap: 14px; }
+.display-back-button { justify-self: start; margin-bottom: 0; }
 .display-card {
   border: 1px solid #e2e8f0;
   border-radius: 20px;

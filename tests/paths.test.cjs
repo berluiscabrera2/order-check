@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.4\.1/);
+  assert.match(serviceWorker, /order-check-shell-v1\.5\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.4\.1/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.4\.1"/);
+  assert.match(read("index.html"), /v1\.5\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.5\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -57,19 +57,23 @@ test("la interfaz incluye metadatos INV y CGO QTY sin cambiar la búsqueda por c
   assert.match(app, /product\.code === code/);
 });
 
-test("Revisados ordena primero los productos marcados más recientemente", () => {
+test("las listas de productos se ordenan por código de menor a mayor", () => {
   const app = read("app.js");
-  assert.match(app, /reviewedAt = Date\.now\(\)/);
-  assert.match(app, /b\.reviewedAt \?\? 0/);
+  assert.match(app, /Number\(a\.code\) - Number\(b\.code\)/);
+  assert.match(app, /return products\.sort/);
+  assert.match(app, /const items = \[\.\.\.displayItems\]\.sort/);
 });
 
-test("Display usa almacenamiento separado y no modifica la lista CGO", () => {
+test("Display usa almacenamiento separado, botón superior y vista con volver", () => {
   const html = read("index.html");
   const app = read("app.js");
-  assert.match(html, /data-app-tab="display"/);
+  assert.match(html, /id="display-button"/);
   assert.match(html, /id="display-section"/);
+  assert.match(html, /id="display-back-button"/);
+  assert.doesNotMatch(html, /id="app-tabs"/);
   assert.match(app, /DISPLAY_STORAGE_KEY = "order-check\.display\.v1"/);
   assert.match(app, /displayItems\.push/);
+  assert.match(app, /showDisplayView/);
 });
 
 test("Display permite cualquier código válido de 4 dígitos aunque no esté en CGO", () => {
@@ -83,6 +87,21 @@ test("la búsqueda filtra desde el primer dígito y abre detalles solo al tocar 
   assert.match(app, /elements\.searchResult\.hidden = true/);
   assert.match(app, /elements\.checklistSection\.hidden = false/);
   assert.match(app, /showProductDetail\(detailsButton\.dataset\.detailsCode\)/);
+});
+
+test("los filtros muestran cantidades dinámicas", () => {
+  const app = read("app.js");
+  assert.match(app, /all: visit\.products\.length/);
+  assert.match(app, /pending: visit\.products\.filter/);
+  assert.match(app, /reviewed: visit\.products\.filter/);
+  assert.match(app, /button\.textContent =/);
+});
+
+test("el encabezado tiene Display a la izquierda y + para nueva visita", () => {
+  const html = read("index.html");
+  assert.match(html, /id="display-button"[\s\S]*?id="new-visit-button"/);
+  assert.match(html, /aria-label="Nueva visita"/);
+  assert.match(html, />\s*\+\s*<\/button>/);
 });
 
 test("la búsqueda respeta Todos, Pendientes y Revisados", () => {
