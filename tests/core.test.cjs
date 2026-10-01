@@ -7,9 +7,11 @@ const {
   parseProducts,
   sanitizeCodeInput,
   normalizeStoredVisit,
+  normalizeDay,
+  productKey,
   nextReviewedAt,
   createSelectionSequence,
-  takeNextSelectionCode,
+  takeNextSelectionKey,
   selectionSequenceComplete,
 } = require("../core.js");
 
@@ -198,14 +200,14 @@ test("la secuencia de Enter conserva exactamente el orden visible de arriba haci
   ]);
 
   assert.equal(selectionSequenceComplete(sequence), false);
-  assert.equal(takeNextSelectionCode(sequence), "2419");
-  assert.equal(takeNextSelectionCode(sequence), "2423");
-  assert.equal(takeNextSelectionCode(sequence), "2465");
+  assert.equal(takeNextSelectionKey(sequence), "2419|-");
+  assert.equal(takeNextSelectionKey(sequence), "2423|-");
+  assert.equal(takeNextSelectionKey(sequence), "2465|-");
   assert.equal(selectionSequenceComplete(sequence), true);
-  assert.equal(takeNextSelectionCode(sequence), null);
+  assert.equal(takeNextSelectionKey(sequence), null);
 });
 
-test("la secuencia de Enter elimina duplicados sin saltarse códigos válidos", () => {
+test("la secuencia de Enter elimina duplicados exactos sin saltarse códigos válidos", () => {
   const sequence = createSelectionSequence([
     { code: "0500" },
     { code: "0500" },
@@ -213,8 +215,70 @@ test("la secuencia de Enter elimina duplicados sin saltarse códigos válidos", 
     { code: "12345" },
   ]);
 
-  assert.deepEqual(sequence.codes, ["0500", "0743"]);
-  assert.equal(takeNextSelectionCode(sequence), "0500");
-  assert.equal(takeNextSelectionCode(sequence), "0743");
-  assert.equal(takeNextSelectionCode(sequence), null);
+  assert.deepEqual(sequence.keys, ["0500|-", "0743|-"]);
+  assert.equal(takeNextSelectionKey(sequence), "0500|-");
+  assert.equal(takeNextSelectionKey(sequence), "0743|-");
+  assert.equal(takeNextSelectionKey(sequence), null);
+});
+
+
+test("DAY se normaliza y valida", () => {
+  assert.equal(normalizeDay("wed"), "WED");
+  assert.equal(normalizeDay(" THU "), "THU");
+  assert.equal(normalizeDay(""), "-");
+  assert.equal(normalizeDay("XYZ"), null);
+});
+
+test("el mismo código en días distintos se conserva como dos productos", () => {
+  assert.deepEqual(parseProducts("1479|20|1|WED\n1479|18|2|THU"), [
+    { code: "1479", inv: "20", cgoQty: "1", reviewed: false, day: "WED" },
+    { code: "1479", inv: "18", cgoQty: "2", reviewed: false, day: "THU" },
+  ]);
+});
+
+test("el mismo código repetido el mismo día se fusiona", () => {
+  assert.deepEqual(parseProducts("1479|-|-|WED\n1479|20|1|WED"), [
+    { code: "1479", inv: "20", cgoQty: "1", reviewed: false, day: "WED" },
+  ]);
+});
+
+test("DAY inválido rechaza la fila", () => {
+  assert.deepEqual(parseProducts("1479|20|1|XYZ\n2423|36|1|THU"), [
+    { code: "2423", inv: "36", cgoQty: "1", reviewed: false, day: "THU" },
+  ]);
+});
+
+test("productKey diferencia el mismo código por día", () => {
+  assert.equal(productKey("1479", "WED"), "1479|WED");
+  assert.equal(productKey("1479", "THU"), "1479|THU");
+});
+
+test("la migración conserva el mismo código en días distintos", () => {
+  assert.deepEqual(
+    normalizeStoredVisit({
+      products: [
+        { code: "1479", inv: "20", cgoQty: "1", day: "WED", reviewed: true, reviewedAt: 10 },
+        { code: "1479", inv: "18", cgoQty: "2", day: "THU", reviewed: false },
+      ],
+    }),
+    {
+      products: [
+        { code: "1479", inv: "20", cgoQty: "1", reviewed: true, day: "WED", reviewedAt: 10 },
+        { code: "1479", inv: "18", cgoQty: "2", reviewed: false, day: "THU" },
+      ],
+    },
+  );
+});
+
+test("Enter trata CODE + DAY como identidades independientes", () => {
+  const sequence = createSelectionSequence([
+    { code: "1479", day: "WED" },
+    { code: "1479", day: "THU" },
+    { code: "2423", day: "THU" },
+  ]);
+  assert.deepEqual(sequence.keys, ["1479|WED", "1479|THU", "2423|THU"]);
+  assert.equal(takeNextSelectionKey(sequence), "1479|WED");
+  assert.equal(takeNextSelectionKey(sequence), "1479|THU");
+  assert.equal(takeNextSelectionKey(sequence), "2423|THU");
+  assert.equal(takeNextSelectionKey(sequence), null);
 });
