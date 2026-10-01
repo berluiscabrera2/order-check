@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.6.2";
+  const APP_VERSION = "1.6.3";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -126,6 +126,8 @@
     elements.visitView.hidden = !hasVisit;
 
     if (hasVisit) {
+      // Paint the filter counts immediately before any heavier list work.
+      renderFilters();
       renderVisit();
     } else {
       elements.codesInput.value = "";
@@ -672,6 +674,15 @@
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     setView();
     elements.codesInput.focus({ preventScroll: true });
+  });
+
+  window.addEventListener("pageshow", () => {
+    if (visit?.products.length) {
+      renderFilters();
+      if (!elements.checklistSection.hidden) {
+        renderChecklist();
+      }
+    }
   });
 
   elements.appVersion.textContent = `v${APP_VERSION}`;

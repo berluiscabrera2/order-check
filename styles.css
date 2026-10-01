@@ -266,7 +266,7 @@ textarea:focus,
   height: 72px;
   border: 3px solid #94a3b8;
   border-radius: 16px;
-  padding: 7px 58px 7px 14px;
+  padding: 7px 58px;
   background: #ffffff;
   color: var(--navy);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

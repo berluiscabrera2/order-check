@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.6\.2/);
+  assert.match(serviceWorker, /order-check-shell-v1\.6\.3/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.6\.2/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.6\.2"/);
+  assert.match(read("index.html"), /v1\.6\.3/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.6\.3"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -89,12 +89,17 @@ test("la búsqueda filtra desde el primer dígito y abre detalles solo al tocar 
   assert.match(app, /showProductDetail\(code\)/);
 });
 
-test("los filtros muestran cantidades dinámicas", () => {
+test("los filtros muestran cantidades dinámicas desde la carga inicial", () => {
   const app = read("app.js");
+  const html = read("index.html");
   assert.match(app, /all: visit\.products\.length/);
   assert.match(app, /pending: visit\.products\.filter/);
   assert.match(app, /reviewed: visit\.products\.filter/);
   assert.match(app, /button\.textContent =/);
+  assert.match(app, /window\.addEventListener\("pageshow"/);
+  assert.doesNotMatch(html, /Todos \(0\)/);
+  assert.doesNotMatch(html, /Pendientes \(0\)/);
+  assert.doesNotMatch(html, /Revisados \(0\)/);
 });
 
 test("el encabezado tiene Display a la izquierda y + para nueva visita", () => {
@@ -121,6 +126,11 @@ test("la lista principal ya no muestra títulos innecesarios alrededor del busca
   assert.doesNotMatch(html, /id="loaded-count"/);
   assert.doesNotMatch(html, />Buscar código<\/label>/);
   assert.doesNotMatch(html, /Escribe 1–4 dígitos/);
+});
+
+test("los cuatro dígitos del buscador quedan centrados incluso con la X", () => {
+  const css = read("styles.css");
+  assert.match(css, /\.search-input \{[\s\S]*?padding: 7px 58px;[\s\S]*?text-align: center;/);
 });
 
 test("el buscador tiene botón X para limpiar y botón flotante para volver arriba", () => {
