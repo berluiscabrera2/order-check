@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.6\.4/);
+  assert.match(serviceWorker, /order-check-shell-v1\.7\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.6\.4/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.6\.4"/);
+  assert.match(read("index.html"), /v1\.7\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.7\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -141,6 +141,16 @@ test("el buscador tiene botón X para limpiar y botón flotante para volver arri
   assert.match(app, /clearSearchButton\.addEventListener\("click", clearSearchAndRefocus\)/);
   assert.match(app, /window\.addEventListener\("scroll", syncScrollTopButton/);
   assert.match(app, /window\.scrollTo\(\{ top: 0/);
+});
+
+test("la mayor parte de cada fila marca el checkbox y el acceso a detalles queda a la izquierda", () => {
+  const app = read("app.js");
+  const css = read("styles.css");
+  assert.match(app, /detailsButton\.append\(chevron\)/);
+  assert.match(app, /checkControl\.append\(content, checkbox\)/);
+  assert.match(app, /rowMain\.append\(detailsButton, checkControl\)/);
+  assert.match(css, /grid-template-columns: 48px minmax\(0, 1fr\)/);
+  assert.match(css, /\.code-checkbox \{[\s\S]*?width: 30px;[\s\S]*?margin: 0 0 0 auto;/);
 });
 
 test("en iOS marcar un checkbox durante una búsqueda mantiene el teclado abierto", () => {

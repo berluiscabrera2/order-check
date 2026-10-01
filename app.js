@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.6.4";
+  const APP_VERSION = "1.7.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -311,9 +311,11 @@
 
       top.append(value, state);
       content.append(top, meta);
-      checkControl.append(checkbox);
-      detailsButton.append(content, chevron);
-      rowMain.append(checkControl, detailsButton);
+      // Keep the small details target on the left. The entire remaining
+      // right side is one large checkbox target for fast one-handed use.
+      detailsButton.append(chevron);
+      checkControl.append(content, checkbox);
+      rowMain.append(detailsButton, checkControl);
       item.append(rowMain);
       fragment.append(item);
     }
