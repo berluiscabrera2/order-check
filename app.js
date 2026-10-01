@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.6.3";
+  const APP_VERSION = "1.6.4";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const core = window.OrderCheckCore;
@@ -56,6 +56,7 @@
   let selectedProductCode = productCodeFromHash();
   let preserveSearchKeyboardOnNextDetail = false;
   let directOpenedRow = null;
+  let directToggledCheckbox = null;
 
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
@@ -502,8 +503,44 @@
     if (!checkbox) {
       return;
     }
-    setReviewed(checkbox.dataset.code, checkbox.checked);
+
+    const code = checkbox.dataset.code;
+    if (directToggledCheckbox?.code === code && Date.now() - directToggledCheckbox.at < 1200) {
+      directToggledCheckbox = null;
+      return;
+    }
+
+    setReviewed(code, checkbox.checked);
   });
+
+  function toggleSearchCheckboxBeforeBlur(event) {
+    const checkControl = event.target.closest(".code-check-control");
+    const checkbox = checkControl?.querySelector("input[data-code]");
+    if (
+      !checkbox ||
+      elements.searchInput.value.length === 0 ||
+      document.activeElement !== elements.searchInput
+    ) {
+      return;
+    }
+
+    // A native checkbox normally takes focus on iOS, which dismisses the
+    // numeric keyboard. Toggle it ourselves at the start of the gesture and
+    // cancel the native focus transfer so the search field stays active.
+    event.preventDefault();
+    const code = checkbox.dataset.code;
+    const product = findProduct(code);
+    if (!product) {
+      return;
+    }
+
+    directToggledCheckbox = { code, at: Date.now() };
+    setReviewed(code, !product.reviewed);
+    elements.searchInput.focus({ preventScroll: true });
+  }
+
+  elements.codeList.addEventListener("touchstart", toggleSearchCheckboxBeforeBlur, { passive: false });
+  elements.codeList.addEventListener("mousedown", toggleSearchCheckboxBeforeBlur);
 
   function openSearchResultBeforeBlur(event) {
     const detailsButton = event.target.closest("button[data-details-code]");

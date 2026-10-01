@@ -29,12 +29,12 @@ test("HTML referencia recursos bajo /order-check/", () => {
 test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
-  assert.match(serviceWorker, /order-check-shell-v1\.6\.3/);
+  assert.match(serviceWorker, /order-check-shell-v1\.6\.4/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.6\.3/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.6\.3"/);
+  assert.match(read("index.html"), /v1\.6\.4/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.6\.4"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -141,6 +141,16 @@ test("el buscador tiene botón X para limpiar y botón flotante para volver arri
   assert.match(app, /clearSearchButton\.addEventListener\("click", clearSearchAndRefocus\)/);
   assert.match(app, /window\.addEventListener\("scroll", syncScrollTopButton/);
   assert.match(app, /window\.scrollTo\(\{ top: 0/);
+});
+
+test("en iOS marcar un checkbox durante una búsqueda mantiene el teclado abierto", () => {
+  const app = read("app.js");
+  assert.match(app, /toggleSearchCheckboxBeforeBlur/);
+  assert.match(app, /codeList\.addEventListener\("touchstart", toggleSearchCheckboxBeforeBlur, \{ passive: false \}\)/);
+  assert.match(app, /codeList\.addEventListener\("mousedown", toggleSearchCheckboxBeforeBlur\)/);
+  assert.match(app, /event\.preventDefault\(\)/);
+  assert.match(app, /setReviewed\(code, !product\.reviewed\)/);
+  assert.match(app, /elements\.searchInput\.focus\(\{ preventScroll: true \}\)/);
 });
 
 test("en iOS el resultado se abre al inicio del toque para evitar que el buscador pierda foco", () => {
