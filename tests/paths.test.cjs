@@ -86,7 +86,7 @@ test("la búsqueda filtra desde el primer dígito y abre detalles solo al tocar 
   assert.match(app, /product\.code\.startsWith\(searchQuery\)/);
   assert.match(app, /elements\.searchResult\.hidden = true/);
   assert.match(app, /elements\.checklistSection\.hidden = false/);
-  assert.match(app, /showProductDetail\(detailsButton\.dataset\.detailsCode\)/);
+  assert.match(app, /showProductDetail\(code\)/);
 });
 
 test("los filtros muestran cantidades dinámicas", () => {
