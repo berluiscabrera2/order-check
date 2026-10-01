@@ -3,6 +3,7 @@
 
   const CODE_PATTERN = /(?:^|[^\d])(\d{4})(?!\d)/g;
   const EXACT_CODE_PATTERN = /^\d{4}$/;
+  const VALID_DAYS = new Set(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
 
   function parseCodes(input) {
     const text = String(input ?? "");
@@ -25,6 +26,19 @@
   function normalizeField(value) {
     const normalized = value == null ? "" : String(value).trim();
     return normalized || "-";
+  }
+
+  function normalizeDay(value) {
+    const raw = value == null ? "" : String(value).trim().toUpperCase();
+    if (!raw || raw === "-") return "-";
+    return VALID_DAYS.has(raw) ? raw : null;
+  }
+
+  function productKey(code, day = "-") {
+    const normalizedCode = String(code ?? "").trim();
+    const normalizedDay = normalizeDay(day);
+    if (!EXACT_CODE_PATTERN.test(normalizedCode) || normalizedDay === null) return null;
+    return `${normalizedCode}|${normalizedDay}`;
   }
 
   function mergeField(currentValue, incomingValue) {
@@ -80,50 +94,48 @@
 
   function parseProducts(input) {
     const products = [];
-    const byCode = new Map();
+    const byKey = new Map();
 
-    function addProduct(code, inv = "-", cgoQty = "-") {
+    function addProduct(code, inv = "-", cgoQty = "-", rawDay = "-") {
+      const day = normalizeDay(rawDay);
+      if (day === null) return;
+
+      const key = productKey(code, day);
+      if (!key) return;
+
       const incoming = {
         code,
         inv: normalizeField(inv),
         cgoQty: normalizeField(cgoQty),
         reviewed: false,
       };
+      if (day !== "-") incoming.day = day;
 
-      const existing = byCode.get(code);
+      const existing = byKey.get(key);
       if (existing) {
-        // Keep first-row ordering, but never lose metadata just because a
-        // simpler duplicate appeared before the complete row.
+        // Same CODE + DAY is one logical row. Same CODE on another DAY stays separate.
         mergeProduct(existing, incoming);
         return;
       }
 
-      byCode.set(code, incoming);
+      byKey.set(key, incoming);
       products.push(incoming);
     }
 
     for (const rawLine of String(input ?? "").split(/\r\n?|\n|\u2028|\u2029/)) {
       const line = rawLine.trim();
-      if (!line) {
-        continue;
-      }
+      if (!line) continue;
 
       const tableFields = parseTableFields(line);
       if (tableFields) {
-        const [rawCode = "", rawInv = "-", rawCgoQty = "-"] = tableFields;
+        const [rawCode = "", rawInv = "-", rawCgoQty = "-", rawDay = "-"] = tableFields;
         const code = rawCode.trim();
-        if (EXACT_CODE_PATTERN.test(code)) {
-          addProduct(code, rawInv, rawCgoQty);
-        }
+        if (EXACT_CODE_PATTERN.test(code)) addProduct(code, rawInv, rawCgoQty, rawDay);
         continue;
       }
 
-      // Preserve the flexible V1 import for lines containing codes separated
-      // by commas, spaces, or surrounding text. Four digits embedded inside
-      // a longer number are intentionally ignored by parseCodes().
-      for (const code of parseCodes(line)) {
-        addProduct(code);
-      }
+      // Preserve legacy input without DAY.
+      for (const code of parseCodes(line)) addProduct(code);
     }
 
     return products;
@@ -145,12 +157,17 @@
       return null;
     }
 
+    const day = normalizeDay(item.day);
+    if (day === null) return null;
+
     const normalized = {
       code,
       inv: normalizeField(item.inv),
       cgoQty: normalizeField(item.cgoQty),
       reviewed: item.reviewed === true || legacyReviewed.has(code),
     };
+    if (day !== "-") normalized.day = day;
+
     const reviewedAt = Number(item.reviewedAt);
     if (normalized.reviewed && Number.isFinite(reviewedAt) && reviewedAt > 0) {
       normalized.reviewedAt = reviewedAt;
@@ -184,24 +201,25 @@
     }
 
     const products = [];
-    const byCode = new Map();
+    const byKey = new Map();
     for (const item of sourceProducts) {
       const candidate =
         typeof item === "string"
           ? normalizeProduct({ code: item, inv: "-", cgoQty: "-" }, legacyReviewed)
           : normalizeProduct(item, legacyReviewed);
 
-      if (!candidate) {
-        continue;
-      }
+      if (!candidate) continue;
 
-      const existing = byCode.get(candidate.code);
+      const key = productKey(candidate.code, candidate.day);
+      if (!key) continue;
+
+      const existing = byKey.get(key);
       if (existing) {
         mergeProduct(existing, candidate);
         continue;
       }
 
-      byCode.set(candidate.code, candidate);
+      byKey.set(key, candidate);
       products.push(candidate);
     }
 
@@ -224,42 +242,41 @@
   }
 
   function createSelectionSequence(products) {
-    const codes = [];
+    const keys = [];
     const seen = new Set();
 
     for (const item of Array.isArray(products) ? products : []) {
-      const code = typeof item === "string" ? item : item?.code;
-      if (typeof code !== "string" || !EXACT_CODE_PATTERN.test(code) || seen.has(code)) {
-        continue;
-      }
-      seen.add(code);
-      codes.push(code);
+      const key =
+        typeof item === "string" ? productKey(item) : productKey(item?.code, item?.day);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      keys.push(key);
     }
 
-    return { codes, nextIndex: 0 };
+    return { keys, nextIndex: 0 };
   }
 
-  function takeNextSelectionCode(sequence) {
+  function takeNextSelectionKey(sequence) {
     if (
       !sequence ||
-      !Array.isArray(sequence.codes) ||
+      !Array.isArray(sequence.keys) ||
       !Number.isInteger(sequence.nextIndex) ||
       sequence.nextIndex < 0 ||
-      sequence.nextIndex >= sequence.codes.length
+      sequence.nextIndex >= sequence.keys.length
     ) {
       return null;
     }
 
-    const code = sequence.codes[sequence.nextIndex];
+    const key = sequence.keys[sequence.nextIndex];
     sequence.nextIndex += 1;
-    return code;
+    return key;
   }
 
   function selectionSequenceComplete(sequence) {
     return (
       !sequence ||
-      !Array.isArray(sequence.codes) ||
-      sequence.nextIndex >= sequence.codes.length
+      !Array.isArray(sequence.keys) ||
+      sequence.nextIndex >= sequence.keys.length
     );
   }
 
@@ -268,9 +285,11 @@
     parseProducts,
     sanitizeCodeInput,
     normalizeStoredVisit,
+    normalizeDay,
+    productKey,
     nextReviewedAt,
     createSelectionSequence,
-    takeNextSelectionCode,
+    takeNextSelectionKey,
     selectionSequenceComplete,
   });
 
