@@ -88,6 +88,7 @@ test("al activar elimina solo cachés antiguas de Order Check", async () => {
     "order-check-shell-v1.9.0",
     "order-check-shell-v1.9.1",
     "order-check-shell-v1.10.0",
+    "order-check-shell-v1.10.1",
     "another-project-shell-v4",
   ]);
   let activationPromise;
@@ -103,5 +104,6 @@ test("al activar elimina solo cachés antiguas de Order Check", async () => {
     "order-check-shell-v1.8.1",
     "order-check-shell-v1.9.0",
     "order-check-shell-v1.9.1",
+    "order-check-shell-v1.10.0",
   ]);
 });

@@ -30,12 +30,12 @@ test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
   assert.match(serviceWorker, /order-check-shell-/);
-  assert.match(serviceWorker, /v1\.10\.0/);
+  assert.match(serviceWorker, /v1\.10\.1/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.10\.0/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.10\.0"/);
+  assert.match(read("index.html"), /v1\.10\.1/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.10\.1"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -91,6 +91,13 @@ test("las operaciones de Warehouse afectan únicamente la lista activa", () => {
   assert.match(app, /warehouseItems\[activeWarehouseTab\] = activeWarehouseItems\(\)\.filter/);
   assert.match(app, /tab === "aisles" \? AISLES_STORAGE_KEY : DISPLAY_STORAGE_KEY/);
   assert.match(app, /localStorage\.removeItem\(DISPLAY_STORAGE_KEY\);[\s\S]*?localStorage\.removeItem\(AISLES_STORAGE_KEY\);/);
+});
+
+test("los campos de cantidad de Warehouse anuncian la lista activa y el código", () => {
+  const app = read("app.js");
+  assert.match(app, /setAttribute\("aria-label", `Cantidad de \$\{label\} para \$\{item\.code\}`\)/);
+  assert.match(app, /const codeLabel = document\.createElement\("span"\)/);
+  assert.doesNotMatch(app, /const label = document\.createElement\("span"\)/);
 });
 
 test("la búsqueda filtra las filas y reserva CGO, INV y QTY para los detalles", () => {

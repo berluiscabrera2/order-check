@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.10.0";
+  const APP_VERSION = "1.10.1";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const AISLES_STORAGE_KEY = "order-check.aisles.v1";
@@ -337,9 +337,9 @@
 
       const codeBlock = document.createElement("div");
       codeBlock.className = "display-code-block";
-      const label = document.createElement("span");
-      label.className = "display-code-label";
-      label.textContent = "Código";
+      const codeLabel = document.createElement("span");
+      codeLabel.className = "display-code-label";
+      codeLabel.textContent = "Código";
       const code = document.createElement("strong");
       code.className = "display-code";
       code.textContent = item.code;
@@ -364,7 +364,7 @@
       removeButton.dataset.removeWarehouseCode = item.code;
       removeButton.textContent = "Eliminar";
 
-      codeBlock.append(label, code);
+      codeBlock.append(codeLabel, code);
       quantityField.append(quantityLabel, quantityInput);
       row.append(codeBlock, quantityField, removeButton);
       fragment.append(row);
