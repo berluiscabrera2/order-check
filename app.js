@@ -1,9 +1,10 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.9.1";
+  const APP_VERSION = "1.10.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
+  const AISLES_STORAGE_KEY = "order-check.aisles.v1";
   const TITLE_STORAGE_KEY = "order-check.title-emojis.v1";
   const DAY_ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
   const core = window.OrderCheckCore;
@@ -16,7 +17,7 @@
     setupMessage: document.querySelector("#setup-message"),
     visitHeader: document.querySelector("#visit-header"),
     emojiTitleButton: document.querySelector("#emoji-title-button"),
-    displayButton: document.querySelector("#display-button"),
+    warehouseButton: document.querySelector("#warehouse-button"),
     dayFilterButton: document.querySelector("#day-filter-button"),
     dayFilterMenu: document.querySelector("#day-filter-menu"),
     sortButton: document.querySelector("#sort-button"),
@@ -28,15 +29,19 @@
     checklistSection: document.querySelector("#checklist-section"),
     codeList: document.querySelector("#code-list"),
     emptyFilterMessage: document.querySelector("#empty-filter-message"),
-    displaySection: document.querySelector("#display-section"),
-    displayBackButton: document.querySelector("#display-back-button"),
-    displayForm: document.querySelector("#display-form"),
-    displayCodeInput: document.querySelector("#display-code-input"),
-    displayQuantityInput: document.querySelector("#display-quantity-input"),
-    displayMessage: document.querySelector("#display-message"),
-    displayCount: document.querySelector("#display-count"),
-    displayList: document.querySelector("#display-list"),
-    displayEmptyMessage: document.querySelector("#display-empty-message"),
+    warehouseSection: document.querySelector("#warehouse-section"),
+    warehouseBackButton: document.querySelector("#warehouse-back-button"),
+    warehouseTabButtons: [...document.querySelectorAll("[data-warehouse-tab]")],
+    warehousePanel: document.querySelector("#warehouse-panel"),
+    warehouseListTitle: document.querySelector("#warehouse-list-title"),
+    warehouseForm: document.querySelector("#warehouse-form"),
+    warehouseCodeInput: document.querySelector("#warehouse-code-input"),
+    warehouseQuantityInput: document.querySelector("#warehouse-quantity-input"),
+    warehouseAddButton: document.querySelector("#warehouse-add-button"),
+    warehouseMessage: document.querySelector("#warehouse-message"),
+    warehouseCount: document.querySelector("#warehouse-count"),
+    warehouseList: document.querySelector("#warehouse-list"),
+    warehouseEmptyMessage: document.querySelector("#warehouse-empty-message"),
     productDetailView: document.querySelector("#product-detail-view"),
     detailBackButton: document.querySelector("#detail-back-button"),
     detailCode: document.querySelector("#detail-code"),
@@ -52,7 +57,13 @@
   };
 
   let visit = loadVisit();
-  let displayItems = visit ? loadDisplayItems() : [];
+  let warehouseItems = visit
+    ? {
+        display: loadWarehouseItems(DISPLAY_STORAGE_KEY),
+        aisles: loadWarehouseItems(AISLES_STORAGE_KEY),
+      }
+    : { display: [], aisles: [] };
+  let activeWarehouseTab = "display";
   let activeFilter = "all";
   let activeDay = "ALL";
   let activeSortMode = "original";
@@ -65,6 +76,7 @@
 
   if (!visit) {
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
+    localStorage.removeItem(AISLES_STORAGE_KEY);
   }
   let lastOpenedProductKey = null;
 
@@ -96,28 +108,9 @@
     }
   }
 
-  function normalizeDisplayQuantity(value) {
-    const digits = String(value ?? "").replace(/\D/g, "").slice(0, 4);
-    if (!digits) return "";
-    const quantity = Number(digits);
-    return quantity > 0 ? String(quantity) : "";
-  }
-
-  function loadDisplayItems() {
+  function loadWarehouseItems(storageKey) {
     try {
-      const saved = JSON.parse(localStorage.getItem(DISPLAY_STORAGE_KEY));
-      if (!Array.isArray(saved)) return [];
-      const items = [];
-      const seen = new Set();
-      for (const item of saved) {
-        const code = core.sanitizeCodeInput(item?.code);
-        const quantity = normalizeDisplayQuantity(item?.quantity);
-        if (code.length !== 4 || !quantity || seen.has(code)) continue;
-        const addedAt = Number(item?.addedAt);
-        seen.add(code);
-        items.push({ code, quantity, addedAt: Number.isFinite(addedAt) && addedAt > 0 ? addedAt : 0 });
-      }
-      return items;
+      return core.normalizeWarehouseItems(JSON.parse(localStorage.getItem(storageKey)));
     } catch {
       return [];
     }
@@ -127,8 +120,17 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(visit));
   }
 
-  function saveDisplayItems() {
-    localStorage.setItem(DISPLAY_STORAGE_KEY, JSON.stringify(displayItems));
+  function warehouseLabel(tab = activeWarehouseTab) {
+    return tab === "aisles" ? "Aisles" : "Display";
+  }
+
+  function activeWarehouseItems() {
+    return warehouseItems[activeWarehouseTab];
+  }
+
+  function saveWarehouseItems(tab = activeWarehouseTab) {
+    const storageKey = tab === "aisles" ? AISLES_STORAGE_KEY : DISPLAY_STORAGE_KEY;
+    localStorage.setItem(storageKey, JSON.stringify(warehouseItems[tab]));
   }
 
   function keyForProduct(product) {
@@ -307,11 +309,27 @@
     return item;
   }
 
-  function renderDisplayList() {
-    const items = [...displayItems].sort(
+  function renderWarehouseList() {
+    const label = warehouseLabel();
+    const items = [...activeWarehouseItems()].sort(
       (a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code),
     );
     const fragment = document.createDocumentFragment();
+
+    for (const button of elements.warehouseTabButtons) {
+      const selected = button.dataset.warehouseTab === activeWarehouseTab;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    }
+
+    const activeTab = elements.warehouseTabButtons.find(
+      (button) => button.dataset.warehouseTab === activeWarehouseTab,
+    );
+    elements.warehousePanel.setAttribute("aria-labelledby", activeTab.id);
+    elements.warehouseListTitle.textContent = label;
+    elements.warehouseAddButton.textContent = `Agregar a ${label}`;
+    elements.warehouseList.setAttribute("aria-label", `Productos para ${label}`);
 
     for (const item of items) {
       const row = document.createElement("li");
@@ -329,7 +347,7 @@
       const quantityField = document.createElement("label");
       quantityField.className = "display-quantity-field";
       const quantityLabel = document.createElement("span");
-      quantityLabel.textContent = "Cantidad display";
+      quantityLabel.textContent = "Cantidad";
       const quantityInput = document.createElement("input");
       quantityInput.className = "display-quantity-input";
       quantityInput.type = "text";
@@ -337,13 +355,13 @@
       quantityInput.pattern = "[0-9]*";
       quantityInput.maxLength = 4;
       quantityInput.value = item.quantity;
-      quantityInput.dataset.displayQuantityCode = item.code;
-      quantityInput.setAttribute("aria-label", `Cantidad de display para ${item.code}`);
+      quantityInput.dataset.warehouseQuantityCode = item.code;
+      quantityInput.setAttribute("aria-label", `Cantidad de ${label} para ${item.code}`);
 
       const removeButton = document.createElement("button");
       removeButton.className = "display-remove-button";
       removeButton.type = "button";
-      removeButton.dataset.removeDisplayCode = item.code;
+      removeButton.dataset.removeWarehouseCode = item.code;
       removeButton.textContent = "Eliminar";
 
       codeBlock.append(label, code);
@@ -352,9 +370,10 @@
       fragment.append(row);
     }
 
-    elements.displayList.replaceChildren(fragment);
-    elements.displayCount.textContent = `${items.length} ${items.length === 1 ? "producto" : "productos"}`;
-    elements.displayEmptyMessage.hidden = items.length > 0;
+    elements.warehouseList.replaceChildren(fragment);
+    elements.warehouseCount.textContent = `${items.length} ${items.length === 1 ? "producto" : "productos"}`;
+    elements.warehouseEmptyMessage.textContent = `No has agregado productos a ${label}.`;
+    elements.warehouseEmptyMessage.hidden = items.length > 0;
   }
 
   function renderChecklist() {
@@ -501,7 +520,7 @@
     elements.visitHeader.hidden = true;
     elements.searchCard.hidden = !keepSearchKeyboard;
     elements.checklistSection.hidden = true;
-    elements.displaySection.hidden = true;
+    elements.warehouseSection.hidden = true;
     elements.productDetailView.hidden = false;
 
     if (updateHistory) {
@@ -523,7 +542,7 @@
   function showVisitHome({ restoreFocus = false } = {}) {
     selectedProductKey = null;
     elements.productDetailView.hidden = true;
-    elements.displaySection.hidden = true;
+    elements.warehouseSection.hidden = true;
     elements.visitHeader.hidden = false;
     elements.searchCard.hidden = false;
     elements.checklistSection.hidden = false;
@@ -542,16 +561,17 @@
     }
   }
 
-  function showDisplayView() {
+  function showWarehouseView() {
     selectedProductKey = null;
     elements.productDetailView.hidden = true;
     elements.visitHeader.hidden = true;
     elements.searchCard.hidden = true;
     elements.checklistSection.hidden = true;
-    elements.displaySection.hidden = false;
-    renderDisplayList();
+    elements.warehouseSection.hidden = false;
+    elements.warehouseMessage.textContent = "";
+    renderWarehouseList();
     window.scrollTo({ top: 0, behavior: "auto" });
-    elements.displayBackButton.focus({ preventScroll: true });
+    elements.warehouseBackButton.focus({ preventScroll: true });
   }
 
   function returnToList() {
@@ -682,8 +702,10 @@
     }
 
     visit = { products };
-    displayItems = [];
+    warehouseItems = { display: [], aisles: [] };
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
+    localStorage.removeItem(AISLES_STORAGE_KEY);
+    activeWarehouseTab = "display";
     activeFilter = "all";
     activeDay = "ALL";
     activeSortMode = "original";
@@ -977,76 +999,96 @@
     renderEmojiTitle();
   });
 
-  elements.displayButton.addEventListener("click", showDisplayView);
-  elements.displayBackButton.addEventListener("click", () => {
+  elements.warehouseButton.addEventListener("click", showWarehouseView);
+  elements.warehouseBackButton.addEventListener("click", () => {
     showVisitHome();
-    elements.displayButton.focus({ preventScroll: true });
+    elements.warehouseButton.focus({ preventScroll: true });
   });
 
-  elements.displayForm.addEventListener("submit", (event) => {
+  for (const button of elements.warehouseTabButtons) {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.warehouseTab;
+      if (!Object.hasOwn(warehouseItems, tab) || tab === activeWarehouseTab) return;
+
+      activeWarehouseTab = tab;
+      elements.warehouseCodeInput.value = "";
+      elements.warehouseQuantityInput.value = "1";
+      elements.warehouseMessage.textContent = "";
+      renderWarehouseList();
+      elements.warehouseCodeInput.focus({ preventScroll: true });
+    });
+  }
+
+  elements.warehouseForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const code = core.sanitizeCodeInput(elements.displayCodeInput.value);
-    const quantity = normalizeDisplayQuantity(elements.displayQuantityInput.value);
+    const code = core.sanitizeCodeInput(elements.warehouseCodeInput.value);
+    const quantity = core.normalizeWarehouseQuantity(elements.warehouseQuantityInput.value);
+    const label = warehouseLabel();
+    const items = activeWarehouseItems();
 
     if (code.length !== 4) {
-      elements.displayMessage.textContent = "Escribe un código válido de 4 dígitos.";
-      elements.displayCodeInput.focus();
+      elements.warehouseMessage.textContent = "Escribe un código válido de 4 dígitos.";
+      elements.warehouseCodeInput.focus();
       return;
     }
     if (!quantity) {
-      elements.displayMessage.textContent = "Escribe una cantidad mayor que 0.";
-      elements.displayQuantityInput.focus();
+      elements.warehouseMessage.textContent = "Escribe una cantidad mayor que 0.";
+      elements.warehouseQuantityInput.focus();
       return;
     }
 
-    const existing = displayItems.find((item) => item.code === code);
+    const existing = items.find((item) => item.code === code);
     if (existing) {
       existing.quantity = quantity;
       existing.addedAt = Date.now();
-      elements.displayMessage.textContent = `Cantidad de ${code} actualizada.`;
+      elements.warehouseMessage.textContent = `Cantidad de ${code} actualizada en ${label}.`;
     } else {
-      displayItems.push({ code, quantity, addedAt: Date.now() });
-      elements.displayMessage.textContent = `${code} agregado a Display.`;
+      items.push({ code, quantity, addedAt: Date.now() });
+      elements.warehouseMessage.textContent = `${code} agregado a ${label}.`;
     }
-    saveDisplayItems();
-    renderDisplayList();
-    elements.displayCodeInput.value = "";
-    elements.displayQuantityInput.value = "1";
-    elements.displayCodeInput.focus({ preventScroll: true });
+    saveWarehouseItems();
+    renderWarehouseList();
+    elements.warehouseCodeInput.value = "";
+    elements.warehouseQuantityInput.value = "1";
+    elements.warehouseCodeInput.focus({ preventScroll: true });
   });
 
-  elements.displayCodeInput.addEventListener("input", () => {
-    elements.displayCodeInput.value = core.sanitizeCodeInput(elements.displayCodeInput.value);
+  elements.warehouseCodeInput.addEventListener("input", () => {
+    elements.warehouseCodeInput.value = core.sanitizeCodeInput(elements.warehouseCodeInput.value);
   });
 
-  elements.displayQuantityInput.addEventListener("input", () => {
-    elements.displayQuantityInput.value = String(elements.displayQuantityInput.value ?? "").replace(/\D/g, "").slice(0, 4);
+  elements.warehouseQuantityInput.addEventListener("input", () => {
+    elements.warehouseQuantityInput.value = String(elements.warehouseQuantityInput.value ?? "").replace(/\D/g, "").slice(0, 4);
   });
 
-  elements.displayList.addEventListener("change", (event) => {
-    const input = event.target.closest("input[data-display-quantity-code]");
+  elements.warehouseList.addEventListener("change", (event) => {
+    const input = event.target.closest("input[data-warehouse-quantity-code]");
     if (!input) return;
-    const item = displayItems.find((entry) => entry.code === input.dataset.displayQuantityCode);
-    const quantity = normalizeDisplayQuantity(input.value);
+    const item = activeWarehouseItems().find(
+      (entry) => entry.code === input.dataset.warehouseQuantityCode,
+    );
+    const quantity = core.normalizeWarehouseQuantity(input.value);
     if (!item || !quantity) {
-      elements.displayMessage.textContent = "La cantidad debe ser mayor que 0.";
-      renderDisplayList();
+      elements.warehouseMessage.textContent = "La cantidad debe ser mayor que 0.";
+      renderWarehouseList();
       return;
     }
     item.quantity = quantity;
-    saveDisplayItems();
-    elements.displayMessage.textContent = `Cantidad de ${item.code} actualizada.`;
-    renderDisplayList();
+    saveWarehouseItems();
+    elements.warehouseMessage.textContent = `Cantidad de ${item.code} actualizada en ${warehouseLabel()}.`;
+    renderWarehouseList();
   });
 
-  elements.displayList.addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-remove-display-code]");
+  elements.warehouseList.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-remove-warehouse-code]");
     if (!button) return;
-    const code = button.dataset.removeDisplayCode;
-    displayItems = displayItems.filter((item) => item.code !== code);
-    saveDisplayItems();
-    renderDisplayList();
-    elements.displayMessage.textContent = `${code} eliminado de Display.`;
+    const code = button.dataset.removeWarehouseCode;
+    warehouseItems[activeWarehouseTab] = activeWarehouseItems().filter(
+      (item) => item.code !== code,
+    );
+    saveWarehouseItems();
+    renderWarehouseList();
+    elements.warehouseMessage.textContent = `${code} eliminado de ${warehouseLabel()}.`;
   });
 
   window.addEventListener("scroll", syncScrollTopButton, { passive: true });
@@ -1057,7 +1099,7 @@
 
   elements.newVisitButton.addEventListener("click", () => {
     const confirmed = window.confirm(
-      "¿Iniciar una nueva visita? Se borrará la lista CGO actual y todos los checks.",
+      "¿Iniciar una nueva visita? Se borrarán la lista CGO, todos los checks y las listas de Warehouse.",
     );
     if (!confirmed) {
       return;
@@ -1065,8 +1107,10 @@
 
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(DISPLAY_STORAGE_KEY);
+    localStorage.removeItem(AISLES_STORAGE_KEY);
     visit = null;
-    displayItems = [];
+    warehouseItems = { display: [], aisles: [] };
+    activeWarehouseTab = "display";
     activeFilter = "all";
     activeDay = "ALL";
     activeSortMode = "original";

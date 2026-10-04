@@ -317,6 +317,35 @@
     return selected;
   }
 
+  function normalizeWarehouseQuantity(value) {
+    const digits = String(value ?? "").replace(/\D/g, "").slice(0, 4);
+    if (!digits) return "";
+    const quantity = Number(digits);
+    return quantity > 0 ? String(quantity) : "";
+  }
+
+  function normalizeWarehouseItems(value) {
+    if (!Array.isArray(value)) return [];
+
+    const items = [];
+    const seen = new Set();
+    for (const item of value) {
+      const code = String(item?.code ?? "").trim();
+      const quantity = normalizeWarehouseQuantity(item?.quantity);
+      if (!EXACT_CODE_PATTERN.test(code) || !quantity || seen.has(code)) continue;
+
+      const addedAt = Number(item?.addedAt);
+      seen.add(code);
+      items.push({
+        code,
+        quantity,
+        addedAt: Number.isFinite(addedAt) && addedAt > 0 ? addedAt : 0,
+      });
+    }
+
+    return items;
+  }
+
   const api = Object.freeze({
     parseCodes,
     parseProducts,
@@ -329,6 +358,8 @@
     takeNextSelectionKey,
     selectionSequenceComplete,
     selectProducts,
+    normalizeWarehouseQuantity,
+    normalizeWarehouseItems,
   });
 
   globalScope.OrderCheckCore = api;

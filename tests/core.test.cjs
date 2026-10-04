@@ -14,6 +14,8 @@ const {
   takeNextSelectionKey,
   selectionSequenceComplete,
   selectProducts,
+  normalizeWarehouseQuantity,
+  normalizeWarehouseItems,
 } = require("../core.js");
 
 test("parsea el formato completo y conserva todos los valores como strings", () => {
@@ -75,6 +77,29 @@ test("parseCodes conserva la compatibilidad de la API V1", () => {
 test("limpia el buscador a solo cuatro dígitos", () => {
   assert.equal(sanitizeCodeInput("05a00"), "0500");
   assert.equal(sanitizeCodeInput("07439"), "0743");
+});
+
+test("normaliza cantidades de Warehouse como strings positivas", () => {
+  assert.equal(normalizeWarehouseQuantity("003"), "3");
+  assert.equal(normalizeWarehouseQuantity("12 units"), "12");
+  assert.equal(normalizeWarehouseQuantity("0"), "");
+  assert.equal(normalizeWarehouseQuantity(""), "");
+});
+
+test("normaliza listas de Warehouse sin perder códigos con cero inicial", () => {
+  assert.deepEqual(
+    normalizeWarehouseItems([
+      { code: "0500", quantity: "2", addedAt: 50 },
+      { code: "2423", quantity: 3 },
+      { code: "0500", quantity: "9" },
+      { code: "12345", quantity: "1" },
+      { code: "0743", quantity: "0" },
+    ]),
+    [
+      { code: "0500", quantity: "2", addedAt: 50 },
+      { code: "2423", quantity: "3", addedAt: 0 },
+    ],
+  );
 });
 
 test("migra una visita V1 y conserva sus checks", () => {

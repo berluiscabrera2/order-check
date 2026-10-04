@@ -30,12 +30,12 @@ test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
   assert.match(serviceWorker, /order-check-shell-/);
-  assert.match(serviceWorker, /v1\.9\.1/);
+  assert.match(serviceWorker, /v1\.10\.0/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.9\.1/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.9\.1"/);
+  assert.match(read("index.html"), /v1\.10\.0/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.10\.0"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -62,24 +62,35 @@ test("la lista usa el selector puro de orden y Revisados conserva los más recie
   const app = read("app.js");
   assert.match(app, /core\.selectProducts\(productsForActiveDay\(\)/);
   assert.match(app, /core\.nextReviewedAt\(visit\.products\)/);
-  assert.match(app, /const items = \[\.\.\.displayItems\]\.sort/);
+  assert.match(app, /const items = \[\.\.\.activeWarehouseItems\(\)\]\.sort/);
 });
 
-test("Display usa almacenamiento separado, botón superior y vista con volver", () => {
+test("Warehouse contiene tabs Display y Aisles con almacenamiento independiente", () => {
   const html = read("index.html");
   const app = read("app.js");
-  assert.match(html, /id="display-button"/);
-  assert.match(html, /id="display-section"/);
-  assert.match(html, /id="display-back-button"/);
-  assert.doesNotMatch(html, /id="app-tabs"/);
+  assert.match(html, /id="warehouse-button"[^>]*>Warehouse<\/button>/);
+  assert.match(html, /id="warehouse-section"/);
+  assert.match(html, /id="warehouse-back-button"/);
+  assert.match(html, /data-warehouse-tab="display"[\s\S]*?>\s*Display\s*<\/button>/);
+  assert.match(html, /data-warehouse-tab="aisles"[\s\S]*?>\s*Aisles\s*<\/button>/);
   assert.match(app, /DISPLAY_STORAGE_KEY = "order-check\.display\.v1"/);
-  assert.match(app, /displayItems\.push/);
-  assert.match(app, /showDisplayView/);
+  assert.match(app, /AISLES_STORAGE_KEY = "order-check\.aisles\.v1"/);
+  assert.match(app, /warehouseItems = visit[\s\S]*?display: loadWarehouseItems\(DISPLAY_STORAGE_KEY\)[\s\S]*?aisles: loadWarehouseItems\(AISLES_STORAGE_KEY\)/);
+  assert.match(app, /function showWarehouseView\(\)/);
+  assert.match(app, /saveWarehouseItems\(\)/);
 });
 
-test("Display permite cualquier código válido de 4 dígitos aunque no esté en CGO", () => {
+test("Warehouse permite cualquier código válido de 4 dígitos aunque no esté en CGO", () => {
   const app = read("app.js");
   assert.doesNotMatch(app, /Ese código no está en la lista CGO actual/);
+});
+
+test("las operaciones de Warehouse afectan únicamente la lista activa", () => {
+  const app = read("app.js");
+  assert.match(app, /function activeWarehouseItems\(\)[\s\S]*?warehouseItems\[activeWarehouseTab\]/);
+  assert.match(app, /warehouseItems\[activeWarehouseTab\] = activeWarehouseItems\(\)\.filter/);
+  assert.match(app, /tab === "aisles" \? AISLES_STORAGE_KEY : DISPLAY_STORAGE_KEY/);
+  assert.match(app, /localStorage\.removeItem\(DISPLAY_STORAGE_KEY\);[\s\S]*?localStorage\.removeItem\(AISLES_STORAGE_KEY\);/);
 });
 
 test("la búsqueda filtra las filas y reserva CGO, INV y QTY para los detalles", () => {
@@ -108,9 +119,9 @@ test("los filtros muestran cantidades dinámicas desde la carga inicial", () => 
   assert.doesNotMatch(html, /Revisados \(0\)/);
 });
 
-test("el encabezado tiene Display a la izquierda y + para nueva visita", () => {
+test("el encabezado tiene Warehouse a la izquierda y + para nueva visita", () => {
   const html = read("index.html");
-  assert.match(html, /id="display-button"[\s\S]*?id="new-visit-button"/);
+  assert.match(html, /id="warehouse-button"[\s\S]*?id="new-visit-button"/);
   assert.match(html, /aria-label="Nueva visita"/);
   assert.match(html, />\s*\+\s*<\/button>/);
 });
@@ -226,11 +237,11 @@ test("DAY usa CODE + DAY como identidad sin colisiones entre días", () => {
   assert.match(app, /selectedProductKey/);
 });
 
-test("el filtro de día es un icono compacto junto a Display y abre un menú", () => {
+test("el filtro de día es un icono compacto junto a Warehouse y abre un menú", () => {
   const html = read("index.html");
   const app = read("app.js");
   const css = read("styles.css");
-  assert.match(html, /id="display-button"[\s\S]*?id="day-filter-button"[\s\S]*?id="new-visit-button"/);
+  assert.match(html, /id="warehouse-button"[\s\S]*?id="day-filter-button"[\s\S]*?id="new-visit-button"/);
   assert.match(html, /id="day-filter-menu"/);
   assert.match(app, /function renderDayMenu\(\)/);
   assert.match(app, /activeDay = button\.dataset\.day/);

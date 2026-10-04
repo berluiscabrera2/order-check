@@ -65,7 +65,7 @@
           </h1>
 
           <div class="visit-actions">
-            <button id="display-button" class="button button--quiet" type="button">Display</button>
+            <button id="warehouse-button" class="button button--quiet" type="button">Warehouse</button>
 
             <div class="day-menu-wrap">
               <button
@@ -159,34 +159,70 @@
           <p id="empty-filter-message" class="empty-state" hidden>No hay códigos en este filtro.</p>
         </section>
 
-        <section id="display-section" class="display-section" aria-labelledby="display-title" hidden>
-          <button id="display-back-button" class="button button--back display-back-button" type="button">
+        <section id="warehouse-section" class="display-section" aria-labelledby="warehouse-title" hidden>
+          <button id="warehouse-back-button" class="button button--back display-back-button" type="button">
             <span aria-hidden="true">←</span>
             Volver
           </button>
-          <article class="display-card">
+
+          <header class="warehouse-heading">
+            <h2 id="warehouse-title">Warehouse</h2>
+            <p>Guarda productos y cantidades en listas separadas.</p>
+          </header>
+
+          <div class="warehouse-tabs" role="tablist" aria-label="Listas de Warehouse">
+            <button
+              id="warehouse-display-tab"
+              class="warehouse-tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="warehouse-panel"
+              data-warehouse-tab="display"
+            >
+              Display
+            </button>
+            <button
+              id="warehouse-aisles-tab"
+              class="warehouse-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="warehouse-panel"
+              data-warehouse-tab="aisles"
+            >
+              Aisles
+            </button>
+          </div>
+
+          <article
+            id="warehouse-panel"
+            class="display-card"
+            role="tabpanel"
+            aria-labelledby="warehouse-display-tab"
+          >
             <div class="display-heading">
               <div>
-                <h2 id="display-title">Display</h2>
-                <p>Agrega cualquier código de 4 dígitos con su cantidad. No modifica el CGO ni los checks.</p>
+                <h3 id="warehouse-list-title">Display</h3>
+                <p>Agrega cualquier código de 4 dígitos con su cantidad. No modifica CGO ni la otra lista.</p>
               </div>
-              <span id="display-count" class="display-count">0 productos</span>
+              <span id="warehouse-count" class="display-count">0 productos</span>
             </div>
-            <form id="display-form" class="display-form" novalidate>
-              <label class="display-field" for="display-code-input">
+            <form id="warehouse-form" class="display-form" novalidate>
+              <label class="display-field" for="warehouse-code-input">
                 <span>Código</span>
-                <input id="display-code-input" class="display-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="0000" />
+                <input id="warehouse-code-input" class="display-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="0000" />
               </label>
-              <label class="display-field" for="display-quantity-input">
+              <label class="display-field" for="warehouse-quantity-input">
                 <span>Cantidad</span>
-                <input id="display-quantity-input" class="display-quantity-entry" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" value="1" />
+                <input id="warehouse-quantity-input" class="display-quantity-entry" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" value="1" />
               </label>
-              <button class="button button--primary display-add-button" type="submit">Agregar a Display</button>
+              <button id="warehouse-add-button" class="button button--primary display-add-button" type="submit">Agregar a Display</button>
             </form>
-            <p id="display-message" class="display-message" role="status" aria-live="polite"></p>
+            <p id="warehouse-message" class="display-message" role="status" aria-live="polite"></p>
           </article>
-          <ul id="display-list" class="display-list" aria-label="Productos para display"></ul>
-          <p id="display-empty-message" class="empty-state">No has agregado productos a Display.</p>
+          <ul id="warehouse-list" class="display-list" aria-label="Productos para Display"></ul>
+          <p id="warehouse-empty-message" class="empty-state">No has agregado productos a Display.</p>
         </section>
 
         <section
@@ -258,7 +294,7 @@
     </button>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.9.1</span>
+      <span id="app-version">v1.10.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>

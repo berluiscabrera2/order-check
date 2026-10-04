@@ -66,6 +66,7 @@ button {
 
 h1,
 h2,
+h3,
 p {
   margin-top: 0;
 }
@@ -188,6 +189,7 @@ textarea:focus,
 .emoji-title-button:focus-visible,
 .day-menu-option:focus-visible,
 .sort-menu-option:focus-visible,
+.warehouse-tab:focus-visible,
 .search-clear-button:focus-visible,
 .search-enter-button:focus-visible,
 .scroll-top-button:focus-visible,
@@ -606,6 +608,31 @@ textarea:focus,
 
 .display-section { display: grid; gap: 14px; }
 .display-back-button { justify-self: start; margin-bottom: 0; }
+.warehouse-heading h2 { margin-bottom: 4px; }
+.warehouse-heading p { margin-bottom: 0; color: var(--muted); font-size: 0.9rem; }
+.warehouse-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  border-radius: 14px;
+  padding: 4px;
+  background: #e7edf5;
+}
+.warehouse-tab {
+  min-height: 48px;
+  border: 0;
+  border-radius: 11px;
+  padding: 9px 12px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+  cursor: pointer;
+}
+.warehouse-tab.is-active {
+  background: #ffffff;
+  color: var(--navy);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 10%);
+}
 .display-card {
   border: 1px solid #e2e8f0;
   border-radius: 20px;
@@ -614,7 +641,7 @@ textarea:focus,
   box-shadow: var(--shadow);
 }
 .display-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.display-heading h2 { margin-bottom: 4px; }
+.display-heading h3 { margin-bottom: 4px; font-size: 1.2rem; }
 .display-heading p { margin-bottom: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.4; }
 .display-count { flex: 0 0 auto; border-radius: 999px; padding: 6px 9px; background: #eef2f7; color: var(--muted); font-size: 0.78rem; font-weight: 800; }
 .display-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr); gap: 10px; margin-top: 18px; }

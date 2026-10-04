@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "order-check-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.9.1`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.10.0`;
 const APP_ROOT = "/order-check/";
 const APP_SHELL = [
   APP_ROOT,
