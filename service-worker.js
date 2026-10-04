@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "order-check-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.10.2`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.10.3`;
 const APP_ROOT = "/order-check/";
 const APP_SHELL = [
   APP_ROOT,
@@ -16,7 +16,21 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        APP_SHELL.map(async (asset) => {
+          // GitHub Pages sends cacheable assets. Force a fresh response so a
+          // new service worker never seeds its new cache with an older app.
+          const response = await fetch(asset, { cache: "reload" });
+          if (!response.ok) {
+            throw new Error(`No se pudo guardar ${asset} para uso offline.`);
+          }
+          await cache.put(asset, response);
+        }),
+      ),
+    ),
+  );
   self.skipWaiting();
 });
 

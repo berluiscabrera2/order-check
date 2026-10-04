@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.10.2";
+  const APP_VERSION = "1.10.3";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const AISLES_STORAGE_KEY = "order-check.aisles.v1";

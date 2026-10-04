@@ -30,12 +30,13 @@ test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
   assert.match(serviceWorker, /order-check-shell-/);
-  assert.match(serviceWorker, /v1\.10\.2/);
+  assert.match(serviceWorker, /v1\.10\.3/);
+  assert.match(serviceWorker, /fetch\(asset, \{ cache: "reload" \}\)/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.10\.2/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.10\.2"/);
+  assert.match(read("index.html"), /v1\.10\.3/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.10\.3"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
