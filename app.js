@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.10.1";
+  const APP_VERSION = "1.10.2";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const AISLES_STORAGE_KEY = "order-check.aisles.v1";
@@ -121,7 +121,7 @@
   }
 
   function warehouseLabel(tab = activeWarehouseTab) {
-    return tab === "aisles" ? "Aisles" : "Display";
+    return tab === "aisles" ? "Aísles" : "Display";
   }
 
   function activeWarehouseItems() {

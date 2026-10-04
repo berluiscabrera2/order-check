@@ -30,12 +30,12 @@ test("service worker limita su caché y scope a /order-check/", () => {
   const serviceWorker = read("service-worker.js");
   assert.match(serviceWorker, /APP_ROOT = "\/order-check\/"/);
   assert.match(serviceWorker, /order-check-shell-/);
-  assert.match(serviceWorker, /v1\.10\.1/);
+  assert.match(serviceWorker, /v1\.10\.2/);
 });
 
 test("la interfaz y el código publican la misma versión", () => {
-  assert.match(read("index.html"), /v1\.10\.1/);
-  assert.match(read("app.js"), /APP_VERSION = "1\.10\.1"/);
+  assert.match(read("index.html"), /v1\.10\.2/);
+  assert.match(read("app.js"), /APP_VERSION = "1\.10\.2"/);
 });
 
 test("las filas ofrecen navegación accesible a detalles y regreso a la lista", () => {
@@ -65,14 +65,14 @@ test("la lista usa el selector puro de orden y Revisados conserva los más recie
   assert.match(app, /const items = \[\.\.\.activeWarehouseItems\(\)\]\.sort/);
 });
 
-test("Warehouse contiene tabs Display y Aisles con almacenamiento independiente", () => {
+test("Warehouse contiene tabs Display y Aísles con almacenamiento independiente", () => {
   const html = read("index.html");
   const app = read("app.js");
   assert.match(html, /id="warehouse-button"[^>]*>Warehouse<\/button>/);
   assert.match(html, /id="warehouse-section"/);
   assert.match(html, /id="warehouse-back-button"/);
   assert.match(html, /data-warehouse-tab="display"[\s\S]*?>\s*Display\s*<\/button>/);
-  assert.match(html, /data-warehouse-tab="aisles"[\s\S]*?>\s*Aisles\s*<\/button>/);
+  assert.match(html, /data-warehouse-tab="aisles"[\s\S]*?>\s*Aísles\s*<\/button>/);
   assert.match(app, /DISPLAY_STORAGE_KEY = "order-check\.display\.v1"/);
   assert.match(app, /AISLES_STORAGE_KEY = "order-check\.aisles\.v1"/);
   assert.match(app, /warehouseItems = visit[\s\S]*?display: loadWarehouseItems\(DISPLAY_STORAGE_KEY\)[\s\S]*?aisles: loadWarehouseItems\(AISLES_STORAGE_KEY\)/);
