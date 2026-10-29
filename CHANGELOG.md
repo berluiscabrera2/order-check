@@ -1,5 +1,9 @@
 # Cambios
 
+## v2.0.1 — Corrección de importación
+
+- La lista no aparece detrás de una ficha abierta tras importar el catálogo.
+
 ## v2.0.0 — Catálogo privado
 
 - Pantalla inicial Catálogo con importación local CSV/JSON, búsqueda, filtros, favoritos y ficha.
