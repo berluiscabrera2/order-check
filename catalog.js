@@ -75,11 +75,13 @@
     const wrap = el("div", large ? "catalog-photo catalog-photo--large" : "catalog-photo");
     const placeholder = el("span", "catalog-placeholder", "Sin foto");
     wrap.append(placeholder);
-    if (item?.url_imagen_goya) {
+    const imageUrl = core.imageUrlForProduct(item);
+    if (imageUrl) {
       const image = el("img");
-      image.src = item.url_imagen_goya;
+      image.src = imageUrl;
       image.alt = `Fotografía de ${display(item.nombre_oficial_goya || item.descripcion_pdf)}`;
-      image.loading = "lazy";
+      image.loading = large ? "eager" : "lazy";
+      image.decoding = "async";
       image.onerror = () => image.remove();
       wrap.append(image);
     }

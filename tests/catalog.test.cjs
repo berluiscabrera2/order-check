@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { parseImport, filterProducts } = require("../catalog-core.js");
+const { parseImport, filterProducts, imageUrlForProduct } = require("../catalog-core.js");
 const headers = "codigo,descripcion_pdf,seccion_pdf,medida_pdf,unidades_por_caja_pdf,unit_price_pdf_usd_por_peso_o_volumen,sugg_retail_pdf_usd_por_producto";
 const sample = `${headers}\n0500,Sample A,Example,1 oz,5,9.87,8.76\n2469,\"Sample, B\",Example,2 oz,6,,7.65\n`;
 
@@ -39,8 +39,29 @@ test("valida lotes de 1753 productos sin convertir códigos a números", () => {
 test("solo imágenes exactas marcadas verificadas y alojadas en Goya", () => {
   const data=[{codigo:"0500",url_imagen_goya:"https://www.goya.com/en/products/example.jpg",estado_match_goya:"pendiente"},{codigo:"0743",url_imagen_goya:"https://www.goya.com/en/products/verified.jpg",estado_match_goya:"verificado"}];
   const items=parseImport(JSON.stringify(data),"file.json");
-  assert.equal(items[0].url_imagen_goya,"");
-  assert.equal(items[1].url_imagen_goya,data[1].url_imagen_goya);
+  assert.equal(items[0].url_imagen_goya,data[0].url_imagen_goya);
+  assert.equal(imageUrlForProduct(items[0]),"");
+  assert.equal(imageUrlForProduct(items[1]),data[1].url_imagen_goya);
+});
+test("CSV nuevo conserva ambas URLs y muestra coincidencias exactas en lista y detalle", () => {
+  const header = `${headers},url_imagen_goya,image_url,estado_match_goya,fuente_imagen_goya,criterio_match_imagen`;
+  const url = "https://www.goya.com/wp-content/uploads/2023/12/0500-Front.png";
+  const items = parseImport(`${header}\n0500,Sample A,Demo,1 oz,5,9.87,8.76,${url},${url},imagen_coincide_codigo_y_presentacion,Goya,sku_y_presentacion\n`,"photos.csv");
+  assert.equal(items[0].image_url,url);
+  assert.equal(items[0].fuente_imagen_goya,"Goya");
+  assert.equal(imageUrlForProduct(items[0]),url);
+  assert.equal(filterProducts(items,{photos:true}).length,1);
+  assert.equal(imageUrlForProduct(parseImport(JSON.stringify({data:items}),"backup.json")[0]),url);
+});
+test("URLs dudosas, ajenas, contradictorias o con código diferente conservan placeholder", () => {
+  const url = "https://www.goya.com/wp-content/uploads/0500-Front.png";
+  const base = {codigo:"0500",image_url:url,estado_match_goya:"imagen_coincide_codigo_y_presentacion"};
+  assert.equal(imageUrlForProduct({...base,estado_match_goya:"revisar_codigo_imagen"}),"");
+  assert.equal(imageUrlForProduct({...base,image_url:"https://example.com/0500.png"}),"");
+  assert.equal(imageUrlForProduct({...base,url_imagen_goya:"https://www.goya.com/0743.png"}),"");
+  assert.equal(imageUrlForProduct({...base,image_url:"https://www.goya.com/15000.png"}),"");
+  assert.equal(imageUrlForProduct({...base,image_url:"https://www.goya.com/%ZZ0500.png"}),"");
+  assert.equal(imageUrlForProduct(parseImport(JSON.stringify([base]),"file.json")[0]),url);
 });
 test("Catálogo inicial y enlace CGO; sin datos privados ni costos internos en el bundle", () => {
   const root=path.resolve(__dirname,"..");

@@ -38,13 +38,13 @@ Los pushes a `main` ejecutan las pruebas y publican el sitio con GitHub Actions 
 
 <https://berluiscabrera2.github.io/order-check/>
 
-Versión actual: **v2.0.1**
+Versión actual: **v2.1.0**
 
 ## Catálogo privado
 
 Al abrir, la PWA muestra Catálogo aunque no haya visita activa. En Safari, pulsa **Importar catálogo CSV o JSON**, selecciona el archivo privado desde Archivos y espera la confirmación de 1,753 productos. El archivo se lee localmente y se guarda en IndexedDB; no se sube al servidor. Busca por código o descripción, filtra por sección, fotos verificadas o favoritos y abre una fila para ver la ficha. Los precios de la fuente son **históricos (21-jun a 18-jul-2026)** y requieren verificación. **Exportar respaldo** descarga un JSON privado que también puede reimportarse. Guárdalo fuera de GitHub.
 
-Pulsa **Order Check** para volver al flujo CGO; desde los detalles CGO, **Ver en catálogo** muestra el mismo código y **Volver a Order Check** restaura la pantalla anterior. Las claves de `localStorage` de visita, Warehouse, Display y Aísles no cambian. Las imágenes solo se muestran si una futura importación tiene URL oficial y correspondencia exacta verificada; no se cachean en el service worker.
+Pulsa **Order Check** para volver al flujo CGO; desde los detalles CGO, **Ver en catálogo** muestra el mismo código y **Volver a Order Check** restaura la pantalla anterior. Las claves de `localStorage` de visita, Warehouse, Display y Aísles no cambian. Al reimportar el CSV con imágenes, la miniatura y la ficha usan la misma URL remota oficial de Goya; no se descargan ni se cachean en el service worker. Se muestran las URLs marcadas como coincidencia de código y presentación (con el código presente en la ruta) o verificadas. Las filas marcadas `revisar_codigo_imagen`, las URLs ajenas a Goya o sin foto mantienen el placeholder para evitar imágenes incorrectas.
 
 El workflow publica una lista explícita de archivos de la app. Nunca agregues CSV, JSON comercial, PDF ni precios a Git. Los archivos con esos nombres están excluidos por `.gitignore`.
 
