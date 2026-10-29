@@ -65,9 +65,9 @@ test("la instalación fuerza archivos frescos antes de guardarlos offline", asyn
   });
   await installPromise;
 
-  assert.equal(fetchCalls.length, 9);
+  assert.equal(fetchCalls.length, 11);
   assert.ok(fetchCalls.every(([, options]) => options?.cache === "reload"));
-  assert.equal(cacheWrites.length, 9);
+  assert.equal(cacheWrites.length, 11);
   assert.ok(cacheWrites.includes("/order-check/app.js"));
   assert.ok(cacheWrites.includes("/order-check/index.html"));
 });
@@ -116,6 +116,7 @@ test("al activar elimina solo cachés antiguas de Order Check", async () => {
     "order-check-shell-v1.10.1",
     "order-check-shell-v1.10.2",
     "order-check-shell-v1.10.3",
+    "order-check-shell-v2.0.0",
     "another-project-shell-v4",
   ]);
   let activationPromise;
@@ -134,5 +135,6 @@ test("al activar elimina solo cachés antiguas de Order Check", async () => {
     "order-check-shell-v1.10.0",
     "order-check-shell-v1.10.1",
     "order-check-shell-v1.10.2",
+    "order-check-shell-v1.10.3",
   ]);
 });

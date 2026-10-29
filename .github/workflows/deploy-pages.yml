@@ -32,12 +32,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Assemble public app only
+        run: |
+          mkdir -p _site/icons
+          cp index.html styles.css core.js app.js catalog-core.js catalog.js manifest.webmanifest service-worker.js .nojekyll _site/
+          cp icons/icon-192.png icons/icon-512.png icons/apple-touch-icon.png icons/icon.svg _site/icons/
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

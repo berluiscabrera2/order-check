@@ -1,7 +1,7 @@
 (function initOrderCheck() {
   "use strict";
 
-  const APP_VERSION = "1.10.3";
+  const APP_VERSION = "2.0.0";
   const STORAGE_KEY = "order-check.visit.v1";
   const DISPLAY_STORAGE_KEY = "order-check.display.v1";
   const AISLES_STORAGE_KEY = "order-check.aisles.v1";
@@ -899,6 +899,30 @@
     }
     setReviewed(keyForProduct(product), !product.reviewed);
   });
+
+  let orderScrollBeforeCatalog = 0;
+  function openCatalogFromOrder(code = null) {
+    orderScrollBeforeCatalog = window.scrollY;
+    elements.setupView.hidden = true;
+    elements.visitView.hidden = true;
+    window.OrderCatalog.open(code, () => {
+      setView();
+      requestAnimationFrame(() => window.scrollTo(0, orderScrollBeforeCatalog));
+    });
+  }
+  for (const button of document.querySelectorAll(".catalog-nav-button")) {
+    button.addEventListener("click", () => openCatalogFromOrder());
+  }
+  document.querySelector("#detail-catalog-button").addEventListener("click", () => {
+    const code = findProduct(selectedProductKey)?.code;
+    if (code) openCatalogFromOrder(code);
+  });
+  window.OrderCheckNavigation = {
+    openOrderCheck() {
+      document.querySelector("#catalog-view").hidden = true;
+      setView();
+    },
+  };
 
   window.addEventListener("popstate", () => {
     const key = productKeyFromHash();
