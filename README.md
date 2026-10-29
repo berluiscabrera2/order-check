@@ -38,4 +38,16 @@ Los pushes a `main` ejecutan las pruebas y publican el sitio con GitHub Actions 
 
 <https://berluiscabrera2.github.io/order-check/>
 
-Versión actual: **v1.10.3**
+Versión actual: **v2.0.0**
+
+## Catálogo privado
+
+Al abrir, la PWA muestra Catálogo aunque no haya visita activa. En Safari, pulsa **Importar catálogo CSV o JSON**, selecciona el archivo privado desde Archivos y espera la confirmación de 1,753 productos. El archivo se lee localmente y se guarda en IndexedDB; no se sube al servidor. Busca por código o descripción, filtra por sección, fotos verificadas o favoritos y abre una fila para ver la ficha. Los precios de la fuente son **históricos (21-jun a 18-jul-2026)** y requieren verificación. **Exportar respaldo** descarga un JSON privado que también puede reimportarse. Guárdalo fuera de GitHub.
+
+Pulsa **Order Check** para volver al flujo CGO; desde los detalles CGO, **Ver en catálogo** muestra el mismo código y **Volver a Order Check** restaura la pantalla anterior. Las claves de `localStorage` de visita, Warehouse, Display y Aísles no cambian. Las imágenes solo se muestran si una futura importación tiene URL oficial y correspondencia exacta verificada; no se cachean en el service worker.
+
+El workflow publica una lista explícita de archivos de la app. Nunca agregues CSV, JSON comercial, PDF ni precios a Git. Los archivos con esos nombres están excluidos por `.gitignore`.
+
+## Rollback a v1.10.3
+
+La rama remota `pre-goya-catalog-20261028` apunta al commit exacto anterior (`f3ff75765327026e94befc44b58a28e97accacf1`). Antes de restaurar, exporta el catálogo privado en la app y haz backup de cualquier visita activa. Desde una clonación actualizada, crea una rama nueva desde `main`, **revierte** el commit o merge de v2.0.0 (sin force push) y abre PR a `main`. Si hay varios commits, revierte sus SHAs en orden inverso. Alternativamente, crea una rama de restauración desde el SHA de respaldo y usa un nuevo commit que copie su árbol a `main`, preservando la historia. El push a `main` dispara pruebas y GitHub Pages. Verifica que la URL muestre v1.10.3. El service worker de la versión restaurada fuerza descarga fresca en instalación y elimina únicamente cachés antiguas `order-check-shell-*`; no toca `localStorage` ni IndexedDB. Si Safari conserva una pestaña antigua, ciérrala y vuelve a abrirla con conexión para que se active el worker restaurado. La v1.10.3 no muestra el catálogo pero sus datos IndexedDB permanecen disponibles para una versión posterior.

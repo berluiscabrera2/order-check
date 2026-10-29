@@ -1,0 +1,5 @@
+# Private catalog sources belong on the user's device, never in Git or Pages.
+*.csv
+*.pdf
+catalogo_goya_para_work*.json
+_site/

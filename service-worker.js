@@ -1,7 +1,7 @@
 "use strict";
 
 const CACHE_PREFIX = "order-check-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1.10.3`;
+const CACHE_NAME = `${CACHE_PREFIX}v2.0.0`;
 const APP_ROOT = "/order-check/";
 const APP_SHELL = [
   APP_ROOT,
@@ -9,6 +9,8 @@ const APP_SHELL = [
   `${APP_ROOT}styles.css`,
   `${APP_ROOT}core.js`,
   `${APP_ROOT}app.js`,
+  `${APP_ROOT}catalog-core.js`,
+  `${APP_ROOT}catalog.js`,
   `${APP_ROOT}manifest.webmanifest`,
   `${APP_ROOT}icons/icon-192.png`,
   `${APP_ROOT}icons/icon-512.png`,

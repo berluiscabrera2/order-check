@@ -20,7 +20,34 @@
   </head>
   <body>
     <main class="app-shell">
+      <section id="catalog-view" class="view" aria-labelledby="catalog-title" hidden>
+        <header class="catalog-header"><h1 id="catalog-title">Catálogo</h1><button id="catalog-order-button" class="button button--quiet" type="button">Order Check</button></header>
+        <p class="catalog-subtitle">Consulta productos y precios de lista históricos guardados en este iPhone.</p>
+        <div class="catalog-tools">
+          <label class="catalog-import button button--primary" for="catalog-file">Importar catálogo CSV o JSON</label>
+          <input id="catalog-file" type="file" accept=".csv,.json,text/csv,application/json" hidden />
+          <button id="catalog-export" class="button button--quiet" type="button" hidden>Exportar respaldo</button>
+          <p id="catalog-import-status" role="status" aria-live="polite"></p>
+        </div>
+        <div id="catalog-content" hidden>
+          <label for="catalog-search">Buscar código o producto</label>
+          <input id="catalog-search" class="catalog-search" type="search" autocomplete="off" placeholder="Código o nombre" />
+          <div class="catalog-filters">
+            <label for="catalog-category">Categoría</label><select id="catalog-category"><option value="">Todas</option></select>
+            <label class="catalog-check"><input id="catalog-photos" type="checkbox" /> Con foto</label>
+            <label class="catalog-check"><input id="catalog-favorites" type="checkbox" /> Favoritos</label>
+          </div>
+          <p id="catalog-count" class="catalog-count"></p>
+          <ul id="catalog-list" class="catalog-list"></ul>
+          <button id="catalog-more" class="button button--quiet button--full" type="button" hidden>Mostrar más</button>
+        </div>
+        <article id="catalog-detail" class="catalog-detail" hidden>
+          <button id="catalog-back" class="button button--back" type="button">← Volver</button>
+          <div id="catalog-detail-content"></div>
+        </article>
+      </section>
       <section id="setup-view" class="view" aria-labelledby="setup-title">
+        <button class="button button--quiet catalog-nav-button" type="button">← Catálogo</button>
         <header class="brand-header brand-header--setup">
           <div class="brand-mark" aria-hidden="true">✓</div>
           <div>
@@ -65,6 +92,7 @@
           </h1>
 
           <div class="visit-actions">
+            <button class="button button--quiet catalog-nav-button" type="button">Catálogo</button>
             <button id="warehouse-button" class="button button--quiet" type="button">Warehouse</button>
 
             <div class="day-menu-wrap">
@@ -263,6 +291,7 @@
             </div>
 
             <button id="detail-action" class="button button--result" type="button"></button>
+            <button id="detail-catalog-button" class="button button--quiet button--full" type="button">Ver en catálogo</button>
           </article>
         </section>
       </section>
@@ -294,10 +323,12 @@
     </button>
 
     <footer class="app-footer" aria-label="Versión de la aplicación">
-      <span id="app-version">v1.10.3</span>
+      <span id="app-version">v2.0.0</span>
     </footer>
 
     <script src="/order-check/core.js"></script>
     <script src="/order-check/app.js"></script>
+    <script src="/order-check/catalog-core.js"></script>
+    <script src="/order-check/catalog.js"></script>
   </body>
 </html>
