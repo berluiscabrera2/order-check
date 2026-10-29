@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
   const HEADERS = ["codigo", "descripcion_pdf", "seccion_pdf", "medida_pdf", "unidades_por_caja_pdf", "unit_price_pdf_usd_por_peso_o_volumen", "sugg_retail_pdf_usd_por_producto"];
-  const fields = ["codigo", "descripcion_pdf", "seccion_pdf", "medida_pdf", "fuente_medida", "unidades_por_caja_pdf", "unit_price_pdf_usd_por_peso_o_volumen", "sugg_retail_pdf_usd_por_producto", "fecha_inicio_lista", "fecha_fin_lista", "paginas_pdf", "revisar", "nombre_oficial_goya", "descripcion_oficial_goya", "url_ficha_goya", "url_imagen_goya", "estado_match_goya"];
+  const fields = ["codigo", "descripcion_pdf", "seccion_pdf", "medida_pdf", "fuente_medida", "unidades_por_caja_pdf", "unit_price_pdf_usd_por_peso_o_volumen", "sugg_retail_pdf_usd_por_producto", "fecha_inicio_lista", "fecha_fin_lista", "paginas_pdf", "revisar", "nombre_oficial_goya", "descripcion_oficial_goya", "url_ficha_goya", "url_imagen_goya", "estado_match_goya", "image_url", "fuente_imagen_goya", "criterio_match_imagen"];
 
   function parseCsv(text) {
     const rows = [];
@@ -51,8 +51,7 @@
       if (!/^\d{4}$/.test(item.codigo)) throw new Error("Todos los códigos deben tener cuatro dígitos.");
       if (seen.has(item.codigo)) throw new Error(`Código duplicado: ${item.codigo}. Revisa la presentación antes de importar.`);
       seen.add(item.codigo);
-      // Only explicitly validated exact matches may display a remote image.
-      if (item.estado_match_goya !== "verificado" || !validGoyaUrl(item.url_imagen_goya)) item.url_imagen_goya = "";
+      // Keep imported metadata intact. Rendering decides which images are safe to show.
       if (!validGoyaUrl(item.url_ficha_goya)) item.url_ficha_goya = "";
       products.push(item);
     }
@@ -62,12 +61,27 @@
     try { const url = new URL(value); return url.protocol === "https:" && url.hostname === "www.goya.com"; }
     catch { return false; }
   }
+  function imageUrlForProduct(item) {
+    if (!item) return "";
+    const primary = item.url_imagen_goya?.trim() || "";
+    const alternate = item.image_url?.trim() || "";
+    if (primary && alternate && primary !== alternate) return "";
+    const url = primary || alternate;
+    if (!validGoyaUrl(url)) return "";
+    if (item.estado_match_goya === "verificado") return url;
+    if (item.estado_match_goya !== "imagen_coincide_codigo_y_presentacion") return "";
+    // This file's confident matches identify the exact SKU in the official image path.
+    try {
+      const filename = decodeURIComponent(new URL(url).pathname);
+      return /^\d{4}$/.test(item.codigo) && new RegExp(`(?:^|[^0-9])${item.codigo}(?:[^0-9]|$)`).test(filename) ? url : "";
+    } catch { return ""; }
+  }
   function fold(text) { return String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
   function filterProducts(items, { query = "", category = "", photos = false, favorites = false } = {}) {
     const term = fold(query.trim());
-    return items.filter((p) => (!category || p.seccion_pdf === category) && (!photos || p.url_imagen_goya) && (!favorites || p.favorite) && (!term || fold(`${p.codigo} ${p.descripcion_pdf} ${p.nombre_oficial_goya} ${p.descripcion_oficial_goya} ${p.seccion_pdf}`).includes(term)));
+    return items.filter((p) => (!category || p.seccion_pdf === category) && (!photos || imageUrlForProduct(p)) && (!favorites || p.favorite) && (!term || fold(`${p.codigo} ${p.descripcion_pdf} ${p.nombre_oficial_goya} ${p.descripcion_oficial_goya} ${p.seccion_pdf}`).includes(term)));
   }
-  const api = { parseCsv, parseImport, filterProducts, validGoyaUrl };
+  const api = { parseCsv, parseImport, filterProducts, validGoyaUrl, imageUrlForProduct };
   if (typeof module === "object" && module.exports) module.exports = api;
   root.OrderCatalogCore = api;
 })(typeof window === "undefined" ? globalThis : window);

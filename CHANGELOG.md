@@ -1,5 +1,11 @@
 # Cambios
 
+## v2.1.0 — Fotografías remotas
+
+- Importa `url_imagen_goya` e `image_url` sin descartar datos; miniatura y foto grande cargan URL externa segura.
+- Conserva el placeholder para entradas sin imagen o marcadas para revisar.
+- Respaldo anterior: rama `pre-goya-images-20261028` en `0db14ef55f17f73bd519cfefea0c705d569cdef4` (v2.0.1).
+
 ## v2.0.1 — Corrección de importación
 
 - La lista no aparece detrás de una ficha abierta tras importar el catálogo.
