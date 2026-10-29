@@ -38,7 +38,7 @@ Los pushes a `main` ejecutan las pruebas y publican el sitio con GitHub Actions 
 
 <https://berluiscabrera2.github.io/order-check/>
 
-Versión actual: **v2.0.0**
+Versión actual: **v2.0.1**
 
 ## Catálogo privado
 

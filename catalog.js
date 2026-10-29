@@ -91,7 +91,7 @@
     category.replaceChildren(new Option("Todas", ""));
     [...new Set(products.map((p) => p.seccion_pdf).filter(Boolean))].sort((a, b) => a.localeCompare(b)).forEach((name) => category.add(new Option(name, name)));
     category.value = previous;
-    content.hidden = !products.length;
+    content.hidden = !products.length || !detail.hidden;
     exportButton.hidden = !products.length;
     if (!products.length) status.textContent = "Importa tu catálogo privado desde Archivos. No se sube a ningún servidor.";
     renderList();

@@ -49,6 +49,7 @@ test("Catálogo inicial y enlace CGO; sin datos privados ni costos internos en e
   assert.match(app,/view.hidden = false;\s*readProducts\(\)/);
   assert.match(html,/id="detail-catalog-button"/);
   assert.match(app,/indexedDB.open/);
+  assert.match(app,/content\.hidden = !products\.length \|\| !detail\.hidden/);
   assert.doesNotMatch(html+app,/CASE COST|UNIT COST|24\/ chick peas|catalogo_goya_para_work/);
   assert.match(fs.readFileSync(path.join(root,"service-worker.js"),"utf8"),/catalog\.js/);
   const workflow=fs.readFileSync(path.join(root,".github/workflows/deploy-pages.yml"),"utf8");
