@@ -1,5 +1,10 @@
 # Cambios
 
+## v2.1.1 — Advertencia para imágenes dudosas
+
+- Muestra también las URLs que el CSV marca para revisión, identificándolas en lista y ficha.
+- VoiceOver no anuncia el placeholder cuando la imagen está visible.
+
 ## v2.1.0 — Fotografías remotas
 
 - Importa `url_imagen_goya` e `image_url` sin descartar datos; miniatura y foto grande cargan URL externa segura.

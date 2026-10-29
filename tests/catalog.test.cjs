@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { parseImport, filterProducts, imageUrlForProduct } = require("../catalog-core.js");
+const { parseImport, filterProducts, imageUrlForProduct, imageNeedsReview } = require("../catalog-core.js");
 const headers = "codigo,descripcion_pdf,seccion_pdf,medida_pdf,unidades_por_caja_pdf,unit_price_pdf_usd_por_peso_o_volumen,sugg_retail_pdf_usd_por_producto";
 const sample = `${headers}\n0500,Sample A,Example,1 oz,5,9.87,8.76\n2469,\"Sample, B\",Example,2 oz,6,,7.65\n`;
 
@@ -53,10 +53,11 @@ test("CSV nuevo conserva ambas URLs y muestra coincidencias exactas en lista y d
   assert.equal(filterProducts(items,{photos:true}).length,1);
   assert.equal(imageUrlForProduct(parseImport(JSON.stringify({data:items}),"backup.json")[0]),url);
 });
-test("URLs dudosas, ajenas, contradictorias o con código diferente conservan placeholder", () => {
+test("URLs pendientes de revisión se muestran identificadas; URLs ajenas o contradictorias no", () => {
   const url = "https://www.goya.com/wp-content/uploads/0500-Front.png";
   const base = {codigo:"0500",image_url:url,estado_match_goya:"imagen_coincide_codigo_y_presentacion"};
-  assert.equal(imageUrlForProduct({...base,estado_match_goya:"revisar_codigo_imagen"}),"");
+  assert.equal(imageUrlForProduct({...base,estado_match_goya:"revisar_codigo_imagen"}),url);
+  assert.equal(imageNeedsReview({...base,estado_match_goya:"revisar_codigo_imagen"}),true);
   assert.equal(imageUrlForProduct({...base,image_url:"https://example.com/0500.png"}),"");
   assert.equal(imageUrlForProduct({...base,url_imagen_goya:"https://www.goya.com/0743.png"}),"");
   assert.equal(imageUrlForProduct({...base,image_url:"https://www.goya.com/15000.png"}),"");

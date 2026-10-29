@@ -90,6 +90,7 @@ button {
 .catalog-detail .catalog-photo--large { width: min(100%, 320px); height: 260px; margin: 18px auto; }
 .catalog-detail h2 { font-size: 1.4rem; overflow-wrap: anywhere; }
 .catalog-detail-line { margin: 12px 0; line-height: 1.4; }
+.catalog-image-warning { color: #92400e; font-weight: 700; line-height: 1.4; }
 .catalog-detail .button { margin: 8px 8px 8px 0; }
 .catalog-nav-button { min-height: 44px; }
 

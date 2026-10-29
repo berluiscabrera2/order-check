@@ -68,7 +68,7 @@
     if (primary && alternate && primary !== alternate) return "";
     const url = primary || alternate;
     if (!validGoyaUrl(url)) return "";
-    if (item.estado_match_goya === "verificado") return url;
+    if (item.estado_match_goya === "verificado" || item.estado_match_goya === "revisar_codigo_imagen") return url;
     if (item.estado_match_goya !== "imagen_coincide_codigo_y_presentacion") return "";
     // This file's confident matches identify the exact SKU in the official image path.
     try {
@@ -76,12 +76,15 @@
       return /^\d{4}$/.test(item.codigo) && new RegExp(`(?:^|[^0-9])${item.codigo}(?:[^0-9]|$)`).test(filename) ? url : "";
     } catch { return ""; }
   }
+  function imageNeedsReview(item) {
+    return Boolean(imageUrlForProduct(item)) && item.estado_match_goya === "revisar_codigo_imagen";
+  }
   function fold(text) { return String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
   function filterProducts(items, { query = "", category = "", photos = false, favorites = false } = {}) {
     const term = fold(query.trim());
     return items.filter((p) => (!category || p.seccion_pdf === category) && (!photos || imageUrlForProduct(p)) && (!favorites || p.favorite) && (!term || fold(`${p.codigo} ${p.descripcion_pdf} ${p.nombre_oficial_goya} ${p.descripcion_oficial_goya} ${p.seccion_pdf}`).includes(term)));
   }
-  const api = { parseCsv, parseImport, filterProducts, validGoyaUrl, imageUrlForProduct };
+  const api = { parseCsv, parseImport, filterProducts, validGoyaUrl, imageUrlForProduct, imageNeedsReview };
   if (typeof module === "object" && module.exports) module.exports = api;
   root.OrderCatalogCore = api;
 })(typeof window === "undefined" ? globalThis : window);
